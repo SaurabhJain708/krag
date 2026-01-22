@@ -2,10 +2,21 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "tasks": {
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:deploy": {
+      "cache": false
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build","^db:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["BETTER_AUTH_URL"]
     },
     "lint": {
       "dependsOn": ["^lint"]
@@ -14,8 +25,10 @@
       "dependsOn": ["^check-types"]
     },
     "dev": {
+      "dependsOn": ["^db:generate"],
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["BETTER_AUTH_URL"]
     }
   }
 }

@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@repo/ui": "*",
+    "@repo/db": "*",
+    "better-auth": "^1.4.17",
     "next": "16.0.10",
     "react": "^19.2.0",
     "react-dom": "^19.1.0"
