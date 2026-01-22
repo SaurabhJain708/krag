@@ -1,0 +1,40 @@
+# Dependencies
+node_modules
+package-lock.json
+
+# Build outputs
+.next
+dist
+build
+.turbo
+
+# Generated files
+**/generated/**
+*.min.js
+*.min.css
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python files (handled by Black)
+*.py
+*.pyi
+*.pyx
+*.pyw
+requirements.txt
+setup.py
+pyproject.toml
+Pipfile
