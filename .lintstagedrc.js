@@ -43,10 +43,10 @@ module.exports = {
     });
     
     return [
-      `prettier --check ${quotedFiles}`,
+      `prettier --write ${quotedFiles}`,
       ...eslintCommands,
     ];
   },
-  "*.{md,json,css}": ["prettier --check"],
+  "*.{md,json,css}": ["prettier --write"],
   "*.py": ["black --check --diff", "ruff check"],
 };
