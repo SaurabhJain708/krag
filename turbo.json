@@ -16,7 +16,15 @@
       "dependsOn": ["^build", "^db:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-      "env": ["BETTER_AUTH_URL", "DATABASE_URL", "DIRECT_URL", "NODE_ENV"]
+      "env": [
+        "BETTER_AUTH_URL",
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "NODE_ENV",
+        "SUPABASE_URL",
+        "SUPABASE_KEY",
+        "REDIS_URL"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
@@ -28,7 +36,15 @@
       "dependsOn": ["^db:generate"],
       "cache": false,
       "persistent": true,
-      "env": ["BETTER_AUTH_URL", "DATABASE_URL", "DIRECT_URL", "NODE_ENV"]
+      "env": [
+        "BETTER_AUTH_URL",
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "NODE_ENV",
+        "SUPABASE_URL",
+        "SUPABASE_KEY",
+        "REDIS_URL"
+      ]
     }
   }
 }

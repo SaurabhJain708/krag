@@ -11,10 +11,14 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@repo/db": "*",
     "@repo/ui": "*",
+    "@supabase/supabase-js": "^2.91.1",
     "@tanstack/react-query": "^5.90.19",
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
@@ -22,6 +26,8 @@
     "better-auth": "^1.4.17",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "ioredis": "^5.9.2",
     "lucide-react": "^0.563.0",
     "next": "16.0.10",
     "react": "^19.2.0",

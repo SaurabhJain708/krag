@@ -13,16 +13,30 @@ datasource db {
   provider = "postgresql"
 }
 
+enum MessageRole {
+  user
+  assistant
+}
+
+enum FileProcessingStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
 model User {
-  id            String    @id
+  id            String     @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean    @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   sessions      Session[]
   accounts      Account[]
+  notebooks     Notebook[]
+  files         File[]
 
   @@unique([email])
   @@map("user")
@@ -74,4 +88,52 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Notebook {
+  id          String    @id
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  files       File[]
+  
+  @@index([userId])
+  @@map("notebook")
+}
+
+model Message {
+  id         String      @id
+  content    String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  userId     String
+  notebookId String
+  notebook   Notebook    @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  role       MessageRole
+
+  @@index([notebookId])
+  @@index([userId])
+  @@map("message")
+}
+
+model File {
+  id               String               @id
+  name             String
+  path             String
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  userId           String
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content          Json?
+  processingStatus FileProcessingStatus @default(pending)
+  notebookId       String
+  notebook         Notebook             @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([notebookId])
+  @@map("file")
 }
