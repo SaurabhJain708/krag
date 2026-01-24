@@ -35,11 +35,10 @@ module.exports = {
       }
     });
     
-    // Generate ESLint commands with explicit config paths
-    const eslintCommands = Object.entries(filesByConfig).flatMap(([configPath, files]) => {
-      return files.map((file) => {
-        return `eslint --config "${configPath}" "${file}"`;
-      });
+    // Generate ESLint commands with explicit config paths (batch files by config)
+    const eslintCommands = Object.entries(filesByConfig).map(([configPath, files]) => {
+      const quotedFiles = files.map((f) => `"${f}"`).join(" ");
+      return `eslint --config "${configPath}" ${quotedFiles}`;
     });
     
     return [
