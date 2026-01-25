@@ -88,10 +88,9 @@ export default function NotebookCard({
     <Card className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-xl border p-0 shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
       <CardContent className="flex h-full flex-col p-0">
         <div
-          className={`relative h-40 overflow-hidden rounded-t-xl ${
-            notebook.image ? "" : `bg-linear-to-br ${cardGradient}`
-          }`}
+          className={`relative h-40 bg-linear-to-br ${cardGradient} overflow-hidden rounded-t-xl`}
         >
+          {/* Notebook Image or Gradient Background */}
           {notebook.image ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -100,17 +99,11 @@ export default function NotebookCard({
                 alt={notebook.name}
                 className="h-full w-full object-cover"
               />
-              {/* Dark overlay for better text contrast */}
-              <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent"></div>
+              {/* Overlay for better text readability */}
+              <div className="absolute inset-0 bg-linear-to-t from-black/40 via-black/20 to-transparent"></div>
             </>
           ) : (
             <>
-              {/* Notebook Icon */}
-              <div
-                className={`absolute top-4 left-4 h-12 w-12 rounded-xl bg-linear-to-br ${iconGradient} z-10 flex items-center justify-center shadow-lg`}
-              >
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
               {/* Gradient overlay with pattern */}
               <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent"></div>
               <div
@@ -125,6 +118,12 @@ export default function NotebookCard({
               <div className="absolute bottom-4 left-4 h-16 w-16 rounded-full bg-white/10 blur-lg"></div>
             </>
           )}
+          {/* Notebook Icon */}
+          <div
+            className={`absolute top-4 left-4 h-12 w-12 rounded-xl bg-linear-to-br ${iconGradient} z-10 flex items-center justify-center shadow-lg`}
+          >
+            <BookOpen className="h-6 w-6 text-white" />
+          </div>
         </div>
         <div className="bg-card flex flex-1 flex-col p-5">
           <h3 className="group-hover:text-primary mb-2 line-clamp-2 text-base font-semibold transition-colors">

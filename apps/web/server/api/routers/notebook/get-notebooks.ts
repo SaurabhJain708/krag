@@ -16,30 +16,23 @@ export const GetNotebooks = protectedProcedure.query(async ({ ctx }) => {
     },
   });
 
-  const notebooksWithUrls = notebooks.map((note) => {
-    let imageUrl = null;
+  const notebooksWithUrls = await Promise.all(
+    notebooks.map(async (note) => {
+      let signedUrl = null;
 
-    if (note.image) {
-      // If note.image is already a full URL, use it directly
-      // Otherwise, it's a path and we need to get the public URL
-      if (
-        note.image.startsWith("http://") ||
-        note.image.startsWith("https://")
-      ) {
-        imageUrl = note.image;
-      } else {
-        // Get the public URL for the stored path
-        const { data: urlData } = supabase.storage
+      if (note.image) {
+        const { data, error } = await supabase.storage
           .from("files")
-          .getPublicUrl(note.image);
-        imageUrl = urlData.publicUrl;
-      }
-    }
+          .createSignedUrl(note.image, 3600);
 
-    return {
-      ...note,
-      image: imageUrl,
-    };
-  });
+        signedUrl = data?.signedUrl || null;
+      }
+
+      return {
+        ...note,
+        image: signedUrl,
+      };
+    })
+  );
   return notebooksWithUrls;
 });
