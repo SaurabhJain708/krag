@@ -6,4 +6,5 @@ export interface Notebook {
   description?: string;
   createdAt: Date;
   sourceCount: number;
+  image?: string | null;
 }

@@ -154,6 +154,27 @@ export default function CreateNotebookModal({
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        if (!reader.result || typeof reader.result !== "string") {
+          reject(new Error("Failed to read file"));
+          return;
+        }
+        // Remove the data URL prefix (e.g., "data:image/png;base64,")
+        const base64 = reader.result.split(",")[1];
+        if (!base64) {
+          reject(new Error("Failed to extract base64 data"));
+          return;
+        }
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -187,7 +208,8 @@ export default function CreateNotebookModal({
       const payload: {
         name: string;
         description?: string;
-        image?: File;
+        imageBase64?: string;
+        imageType?: string;
       } = {
         name: name.trim(),
       };
@@ -197,7 +219,10 @@ export default function CreateNotebookModal({
       }
 
       if (image) {
-        payload.image = image;
+        // Convert File to base64
+        const base64 = await fileToBase64(image);
+        payload.imageBase64 = base64;
+        payload.imageType = image.type;
       }
 
       await createNotebook.mutateAsync(payload);

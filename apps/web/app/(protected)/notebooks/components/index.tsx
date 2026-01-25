@@ -48,6 +48,7 @@ export default function NotebooksPage() {
       description: notebook.description ?? undefined,
       createdAt: notebook.createdAt,
       sourceCount: notebook._count.sources,
+      image: notebook.image ?? undefined,
     }));
 
     switch (sortBy) {
