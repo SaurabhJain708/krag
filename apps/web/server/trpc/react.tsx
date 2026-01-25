@@ -25,7 +25,7 @@ export function TRPCProvider(props: PropsWithChildren) {
       links: [
         httpBatchLink({
           transformer: superjson,
-          url: process.env.NEXT_PUBLIC_API_URL!,
+          url: process.env.NEXT_PUBLIC_API_URL || "/api/trpc",
         }),
       ],
     })

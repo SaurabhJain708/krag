@@ -36,7 +36,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   notebooks     Notebook[]
-  files         File[]
+  sources         Source[]
 
   @@unique([email])
   @@map("user")
@@ -91,7 +91,7 @@ model Verification {
 }
 
 model Notebook {
-  id          String    @id
+  id          String    @id @default(uuid())
   name        String
   description String?
   createdAt   DateTime  @default(now())
@@ -99,14 +99,15 @@ model Notebook {
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages    Message[]
-  files       File[]
-  
+  sources     Source[]
+  image       String?
+
   @@index([userId])
   @@map("notebook")
 }
 
 model Message {
-  id         String      @id
+  id         String      @id @default(uuid())
   content    String
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -120,8 +121,8 @@ model Message {
   @@map("message")
 }
 
-model File {
-  id               String               @id
+model Source {
+  id               String               @id @default(uuid())
   name             String
   path             String
   createdAt        DateTime             @default(now())

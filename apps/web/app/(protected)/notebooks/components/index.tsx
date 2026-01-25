@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo } from "react";
 import {
   BookOpen,
@@ -27,103 +29,46 @@ import { cn } from "@/lib/utils";
 import NotebookCard from "./notebookCard";
 import CreateNotebookCard from "./createNotebookCard";
 import CreateNotebookModal from "./createNotebookModal";
-import type { Notebook, ViewType } from "@/app/(protected)/notebooks/types";
-
-// Mock data - all notebooks
-const allNotebooks: Notebook[] = [
-  {
-    id: "1",
-    name: "How to Build a Life, from The Atlantic",
-    description: "A comprehensive guide to living well",
-    createdAt: new Date("2025-04-23"),
-    sourceCount: 46,
-  },
-  {
-    id: "2",
-    name: "The science fan's guide to visiting...",
-    description: "Exploring scientific destinations",
-    createdAt: new Date("2025-05-12"),
-    sourceCount: 17,
-  },
-  {
-    id: "3",
-    name: "Trends in health, wealth and happiness",
-    description: "Understanding modern life patterns",
-    createdAt: new Date("2025-04-15"),
-    sourceCount: 24,
-  },
-  {
-    id: "4",
-    name: "Introduction to NotebookLM",
-    description: "Getting started with your AI notebook",
-    createdAt: new Date("2023-12-06"),
-    sourceCount: 27,
-  },
-  {
-    id: "5",
-    name: "Archive 1945",
-    description: "Historical documents and analysis",
-    createdAt: new Date("2025-09-29"),
-    sourceCount: 27,
-  },
-  {
-    id: "6",
-    name: "Uber Technologies 2021 Annual Report...",
-    description: "Financial analysis and insights",
-    createdAt: new Date("2026-01-17"),
-    sourceCount: 1,
-  },
-  {
-    id: "7",
-    name: "Austrian Liability Law: Railway and Motor...",
-    description: "Legal research and case studies",
-    createdAt: new Date("2026-01-05"),
-    sourceCount: 1,
-  },
-  {
-    id: "8",
-    name: "Untitled notebook",
-    description: "",
-    createdAt: new Date("2026-01-05"),
-    sourceCount: 0,
-  },
-  {
-    id: "9",
-    name: "voestalpine AG: Enterprise Data and...",
-    description: "Business intelligence report",
-    createdAt: new Date("2025-11-27"),
-    sourceCount: 1,
-  },
-];
+import type { ViewType } from "@/app/(protected)/notebooks/types";
+import { trpc } from "@/server/trpc/react";
 
 export default function NotebooksPage() {
   const [view, setView] = useState<ViewType>("grid");
   const [sortBy, setSortBy] = useState("recent");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Sort notebooks based on selected filter
+  const { data: notebooks = [], isLoading } =
+    trpc.notebookRouter.getNotebooks.useQuery();
+
+  // Transform and sort notebooks based on selected filter
   const sortedNotebooks = useMemo(() => {
-    const notebooks = [...allNotebooks];
+    const transformedNotebooks = notebooks.map((notebook) => ({
+      id: notebook.id,
+      name: notebook.name,
+      description: notebook.description ?? undefined,
+      createdAt: notebook.createdAt,
+      sourceCount: notebook._count.sources,
+    }));
 
     switch (sortBy) {
       case "recent":
-        return notebooks.sort((a, b) => {
+        return transformedNotebooks.sort((a, b) => {
           return b.createdAt.getTime() - a.createdAt.getTime();
         });
       case "oldest":
-        return notebooks.sort((a, b) => {
+        return transformedNotebooks.sort((a, b) => {
           return a.createdAt.getTime() - b.createdAt.getTime();
         });
       case "name":
-        return notebooks.sort((a, b) => {
+        return transformedNotebooks.sort((a, b) => {
           return a.name.localeCompare(b.name, undefined, {
             sensitivity: "base",
           });
         });
       default:
-        return notebooks;
+        return transformedNotebooks;
     }
-  }, [sortBy]);
+  }, [notebooks, sortBy]);
 
   return (
     <div className="bg-background min-h-screen">
@@ -233,22 +178,94 @@ export default function NotebooksPage() {
         </div>
 
         {/* All Notebooks */}
-        <div
-          className={cn(
-            "grid gap-4",
-            view === "grid"
-              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              : "grid-cols-1"
-          )}
-        >
-          <CreateNotebookCard
-            view={view}
-            onClick={() => setIsCreateModalOpen(true)}
-          />
-          {sortedNotebooks.map((notebook) => (
-            <NotebookCard key={notebook.id} notebook={notebook} view={view} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div
+            className={cn(
+              "grid gap-4",
+              view === "grid"
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                : "grid-cols-1"
+            )}
+          >
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "bg-card animate-pulse rounded-xl border shadow-md",
+                  view === "list" ? "p-4" : "overflow-hidden"
+                )}
+              >
+                {view === "list" ? (
+                  <div className="flex items-center gap-4">
+                    <div className="bg-muted h-14 w-14 shrink-0 rounded-xl" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="bg-muted h-5 w-3/4 rounded" />
+                      <div className="bg-muted h-4 w-full rounded" />
+                      <div className="mt-2 flex gap-4">
+                        <div className="bg-muted h-3 w-20 rounded" />
+                        <div className="bg-muted h-3 w-16 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-muted h-40 w-full" />
+                    <div className="space-y-3 p-5">
+                      <div className="bg-muted h-5 w-3/4 rounded" />
+                      <div className="bg-muted h-4 w-full rounded" />
+                      <div className="bg-muted h-4 w-2/3 rounded" />
+                      <div className="mt-4 flex justify-between">
+                        <div className="bg-muted h-3 w-20 rounded" />
+                        <div className="bg-muted h-3 w-16 rounded" />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : sortedNotebooks.length === 0 ? (
+          <div className="flex min-h-[60vh] flex-col items-center justify-center py-16">
+            <div className="flex max-w-md flex-col items-center gap-6 text-center">
+              <div className="bg-muted/50 flex h-20 w-20 items-center justify-center rounded-xl">
+                <BookOpen className="text-muted-foreground/60 h-10 w-10" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-foreground text-xl font-semibold">
+                  No notebooks yet
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Create your first notebook to get started
+                </p>
+              </div>
+              <Button
+                size="lg"
+                className="mt-2 cursor-pointer"
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Create Notebook
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "grid gap-4",
+              view === "grid"
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                : "grid-cols-1"
+            )}
+          >
+            <CreateNotebookCard
+              view={view}
+              onClick={() => setIsCreateModalOpen(true)}
+            />
+            {sortedNotebooks.map((notebook) => (
+              <NotebookCard key={notebook.id} notebook={notebook} view={view} />
+            ))}
+          </div>
+        )}
       </div>
       <CreateNotebookModal
         open={isCreateModalOpen}

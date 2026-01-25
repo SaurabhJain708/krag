@@ -3,6 +3,8 @@ import "../globals.css";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
+import { TRPCProvider } from "@/server/trpc/react";
+import { Toaster } from "sonner";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -19,7 +21,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={geist.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <TRPCProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+          </TRPCProvider>
+        </AuthProvider>
       </body>
     </html>
   );

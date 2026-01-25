@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Dialog,
   DialogContent,
@@ -13,6 +15,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Plus, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/server/trpc/react";
+import { toast } from "sonner";
 
 export default function CreateNotebookModal({
   open,
@@ -27,10 +31,57 @@ export default function CreateNotebookModal({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [errors, setErrors] = useState<{
+    name?: string;
+    description?: string;
+    image?: string;
+  }>({});
+
+  const MAX_NAME_LENGTH = 100;
+  const MAX_DESCRIPTION_LENGTH = 500;
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+  const utils = trpc.useUtils();
+  const createNotebook = trpc.notebookRouter.createNotebook.useMutation({
+    onSuccess: () => {
+      toast.success("Notebook created successfully!", {
+        id: "create-notebook",
+      });
+      utils.notebookRouter.getNotebooks.invalidate();
+      // Reset form
+      setName("");
+      setDescription("");
+      setImage(null);
+      setImagePreview(null);
+      setErrors({});
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create notebook", {
+        id: "create-notebook",
+      });
+    },
+  });
+
+  const validateFile = (file: File): string | null => {
+    if (!file.type.startsWith("image/")) {
+      return "Please upload an image file (PNG, JPG, GIF)";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`;
+    }
+    return null;
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const error = validateFile(file);
+      if (error) {
+        setErrors((prev) => ({ ...prev, image: error }));
+        return;
+      }
+      setErrors((prev) => ({ ...prev, image: undefined }));
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -59,7 +110,13 @@ export default function CreateNotebookModal({
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) {
+    if (file) {
+      const error = validateFile(file);
+      if (error) {
+        setErrors((prev) => ({ ...prev, image: error }));
+        return;
+      }
+      setErrors((prev) => ({ ...prev, image: undefined }));
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -69,25 +126,84 @@ export default function CreateNotebookModal({
     }
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value.length <= MAX_NAME_LENGTH) {
+      setName(value);
+      setErrors((prev) => ({ ...prev, name: undefined }));
+    } else {
+      setErrors((prev) => ({
+        ...prev,
+        name: `Name must be ${MAX_NAME_LENGTH} characters or less`,
+      }));
+    }
+  };
+
+  const handleDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    const value = e.target.value;
+    if (value.length <= MAX_DESCRIPTION_LENGTH) {
+      setDescription(value);
+      setErrors((prev) => ({ ...prev, description: undefined }));
+    } else {
+      setErrors((prev) => ({
+        ...prev,
+        description: `Description must be ${MAX_DESCRIPTION_LENGTH} characters or less`,
+      }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form
+    const newErrors: typeof errors = {};
     if (!name.trim()) {
+      newErrors.name = "Name is required";
+    }
+    if (name.length > MAX_NAME_LENGTH) {
+      newErrors.name = `Name must be ${MAX_NAME_LENGTH} characters or less`;
+    }
+    if (description.length > MAX_DESCRIPTION_LENGTH) {
+      newErrors.description = `Description must be ${MAX_DESCRIPTION_LENGTH} characters or less`;
+    }
+    if (image) {
+      const imageError = validateFile(image);
+      if (imageError) {
+        newErrors.image = imageError;
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     setIsSubmitting(true);
-    try {
-      // TODO: Implement API call to create notebook
-      console.log("Creating notebook:", { name, description, image });
+    toast.loading("Creating notebook...", { id: "create-notebook" });
 
-      // Reset form
-      setName("");
-      setDescription("");
-      setImage(null);
-      setImagePreview(null);
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error creating notebook:", error);
+    try {
+      const payload: {
+        name: string;
+        description?: string;
+        image?: File;
+      } = {
+        name: name.trim(),
+      };
+
+      if (description.trim()) {
+        payload.description = description.trim();
+      }
+
+      if (image) {
+        payload.image = image;
+      }
+
+      await createNotebook.mutateAsync(payload);
+      // Success is handled by onSuccess callback
+    } catch {
+      // Error is handled by onError callback
     } finally {
       setIsSubmitting(false);
     }
@@ -99,6 +215,7 @@ export default function CreateNotebookModal({
       setDescription("");
       setImage(null);
       setImagePreview(null);
+      setErrors({});
       onOpenChange(false);
     }
   };
@@ -123,34 +240,54 @@ export default function CreateNotebookModal({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="mt-4 space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium">
-              Notebook Name <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="name" className="text-sm font-medium">
+                Notebook Name <span className="text-destructive">*</span>
+              </Label>
+              <span className="text-muted-foreground text-xs">
+                {name.length}/{MAX_NAME_LENGTH}
+              </span>
+            </div>
             <Input
               id="name"
               placeholder="e.g., Research Notes, Project Ideas, Learning Journal"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={handleNameChange}
               required
               disabled={isSubmitting}
               className="h-11"
+              maxLength={MAX_NAME_LENGTH}
             />
+            {errors.name && (
+              <p className="text-destructive text-xs">{errors.name}</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
-              Description{" "}
-              <span className="text-muted-foreground text-xs">(optional)</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Description{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optional)
+                </span>
+              </Label>
+              <span className="text-muted-foreground text-xs">
+                {description.length}/{MAX_DESCRIPTION_LENGTH}
+              </span>
+            </div>
             <Textarea
               id="description"
               placeholder="Add a brief description to help you remember what this notebook is for..."
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={handleDescriptionChange}
               rows={4}
               disabled={isSubmitting}
               className="resize-none"
+              maxLength={MAX_DESCRIPTION_LENGTH}
             />
+            {errors.description && (
+              <p className="text-destructive text-xs">{errors.description}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -167,16 +304,16 @@ export default function CreateNotebookModal({
                     alt="Preview"
                     className="h-full w-full object-cover"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                     <Button
                       type="button"
                       variant="destructive"
                       size="icon"
                       onClick={handleRemoveImage}
                       disabled={isSubmitting}
-                      className="rounded-full"
+                      className="cursor-pointer rounded-full"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-4 w-4 cursor-pointer" />
                     </Button>
                   </div>
                 </div>
@@ -214,28 +351,33 @@ export default function CreateNotebookModal({
                       Drop an image here or click to upload
                     </p>
                     <p className="text-muted-foreground mt-1 text-xs">
-                      PNG, JPG, GIF up to 10MB
+                      PNG, JPG, GIF up to {MAX_FILE_SIZE / (1024 * 1024)}MB
                     </p>
+                    {errors.image && (
+                      <p className="text-destructive mt-2 text-xs">
+                        {errors.image}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="w-full sm:w-auto"
+              className="w-full cursor-pointer sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || !name.trim()}
-              className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 sm:w-auto"
+              className="w-full cursor-pointer bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 sm:w-auto"
             >
               {isSubmitting ? (
                 <>
