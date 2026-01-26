@@ -31,6 +31,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 export default function NotebookDetailPage({
   params,
@@ -69,6 +71,14 @@ export default function NotebookDetailPage({
     handleFileSelect(e.dataTransfer.files);
   };
 
+  const router = useRouter();
+
+  const handleSignout = () => {
+    signOut().then(() => {
+      router.push("/");
+    });
+  };
+
   return (
     <div className="bg-muted/20 flex h-screen flex-col overflow-hidden">
       {/* Header */}
@@ -89,6 +99,7 @@ export default function NotebookDetailPage({
             variant="ghost"
             size="sm"
             className="text-foreground hover:bg-muted/80 h-9 rounded-lg px-3 transition-colors"
+            onClick={() => router.push("/settings")}
           >
             <Settings className="mr-2 h-4 w-4" />
             Settings
@@ -114,16 +125,19 @@ export default function NotebookDetailPage({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/settings")}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/settings")}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem
+                onClick={handleSignout}
+                className="text-destructive cursor-pointer"
+              >
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>

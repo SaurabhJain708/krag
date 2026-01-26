@@ -5,6 +5,7 @@ import {
   type Notebook,
   type ViewType,
 } from "@/app/(protected)/notebooks/types";
+import { useRouter } from "next/navigation";
 
 function getGradientForNotebook(id: string) {
   const gradients = [
@@ -48,10 +49,13 @@ export default function NotebookCard({
 }) {
   const iconGradient = getIconGradientForNotebook(notebook.id);
   const cardGradient = getGradientForNotebook(notebook.id);
-
+  const router = useRouter();
   if (view === "list") {
     return (
-      <Card className="cursor-pointer border-0 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg">
+      <Card
+        onClick={() => router.push(`/notebooks/${notebook.id}`)}
+        className="cursor-pointer border-0 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+      >
         <CardContent className="flex items-center gap-4 p-4">
           <div
             className={`h-14 w-14 shrink-0 rounded-xl bg-linear-to-br ${iconGradient} flex items-center justify-center shadow-md`}
@@ -85,7 +89,10 @@ export default function NotebookCard({
   }
 
   return (
-    <Card className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-xl border p-0 shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
+    <Card
+      onClick={() => router.push(`/notebooks/${notebook.id}`)}
+      className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-xl border p-0 shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+    >
       <CardContent className="flex h-full flex-col p-0">
         <div
           className={`relative h-40 bg-linear-to-br ${cardGradient} overflow-hidden rounded-t-xl`}

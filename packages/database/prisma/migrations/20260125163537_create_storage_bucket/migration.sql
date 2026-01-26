@@ -1,7 +1,16 @@
 -- 1. Create the 'files' bucket (Private)
-insert into storage.buckets (id, name, public)
-values ('files', 'files', false) -- 'false' means NO public access allowed
-on conflict (id) do nothing;
+-- Only create if storage schema exists (Supabase-specific, not in shadow DB)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.schemata 
+    WHERE schema_name = 'storage'
+  ) THEN
+    INSERT INTO storage.buckets (id, name, public)
+    VALUES ('files', 'files', false) -- 'false' means NO public access allowed
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
 
 -- Security Hardening: Enable RLS on all tables
 -- This effectively blocks all public access via the Supabase API
@@ -16,6 +25,3 @@ alter table "message" enable row level security;
 
 -- The 'file' table (mapped from Source model)
 alter table "file" enable row level security;
-
--- Even the migration table should be locked (good practice)
-alter table "_prisma_migrations" enable row level security;

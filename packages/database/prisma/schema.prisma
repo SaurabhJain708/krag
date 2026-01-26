@@ -19,10 +19,22 @@ enum MessageRole {
 }
 
 enum FileProcessingStatus {
-  pending
+  uploading
+  queued
   processing
+  starting
+  vision
+  extracting
+  images
+  chunking
   completed
   failed
+}
+
+enum Encryption {
+  NotEncrypted
+  SimpleEncryption
+  AdvancedEncryption
 }
 
 model User {
@@ -36,7 +48,8 @@ model User {
   sessions      Session[]
   accounts      Account[]
   notebooks     Notebook[]
-  sources         Source[]
+  sources       Source[]
+  encryption    Encryption @default(NotEncrypted)
 
   @@unique([email])
   @@map("user")
@@ -130,7 +143,7 @@ model Source {
   userId           String
   user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   content          Json?
-  processingStatus FileProcessingStatus @default(pending)
+  processingStatus FileProcessingStatus @default(uploading)
   notebookId       String
   notebook         Notebook             @relation(fields: [notebookId], references: [id], onDelete: Cascade)
 

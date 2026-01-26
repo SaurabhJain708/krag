@@ -31,6 +31,8 @@ import CreateNotebookCard from "./createNotebookCard";
 import CreateNotebookModal from "./createNotebookModal";
 import type { ViewType } from "@/app/(protected)/notebooks/types";
 import { trpc } from "@/server/trpc/react";
+import { signOut } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 export default function NotebooksPage() {
   const [view, setView] = useState<ViewType>("grid");
@@ -71,6 +73,14 @@ export default function NotebooksPage() {
     }
   }, [notebooks, sortBy]);
 
+  const router = useRouter();
+
+  const handleSignout = () => {
+    signOut().then(() => {
+      router.push("/");
+    });
+  };
+
   return (
     <div className="bg-background min-h-screen">
       {/* Header */}
@@ -94,7 +104,8 @@ export default function NotebooksPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:bg-accent/50 rounded-lg"
+                className="hover:bg-accent/50 cursor-pointer rounded-lg"
+                onClick={() => router.push("/settings")}
               >
                 <Settings className="h-5 w-5" />
               </Button>
@@ -111,22 +122,31 @@ export default function NotebooksPage() {
                     size="icon"
                     className="hover:bg-accent/50 hover:border-primary/20 h-9 w-9 rounded-full border-2 border-transparent transition-all"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-purple-600">
+                    <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-purple-600">
                       <User className="h-4 w-4 text-white" />
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem className="cursor-pointer">
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => router.push("/settings")}
+                  >
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => router.push("/settings")}
+                  >
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handleSignout}
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                  >
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

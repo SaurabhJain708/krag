@@ -21,7 +21,7 @@ export const GetNotebooks = protectedProcedure.query(async ({ ctx }) => {
       let signedUrl = null;
 
       if (note.image) {
-        const { data, error } = await supabase.storage
+        const { data } = await supabase.storage
           .from("files")
           .createSignedUrl(note.image, 3600);
 

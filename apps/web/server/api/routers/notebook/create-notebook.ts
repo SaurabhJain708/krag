@@ -21,9 +21,16 @@ export const CreateNotebook = protectedProcedure
 
     let imageUrl: string | null = null;
     if (imageBase64 && imageType) {
-      const buffer = Buffer.from(imageBase64, "base64");
-      const data = await uploadFile({ buffer, mimeType: imageType, userId });
-      imageUrl = data.path;
+      try {
+        const buffer = Buffer.from(imageBase64, "base64");
+        const data = await uploadFile({ buffer, mimeType: imageType, userId });
+        imageUrl = data.path;
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        throw new Error(
+          `Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
     }
 
     const notebook = await ctx.db.notebook.create({
