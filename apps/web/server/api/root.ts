@@ -1,12 +1,12 @@
 import { createCallerFactory, createTRPCRouter } from "./trpc";
 import { notebookRouter } from "./routers/notebook";
-import { ingestionRouter } from "./routers/ingestion";
 import { userRouter } from "./routers/user";
+import { sourcesRouter } from "./routers/sources";
 
 export const appRouter = createTRPCRouter({
   notebookRouter: notebookRouter,
-  ingestionRouter: ingestionRouter,
   userRouter: userRouter,
+  sourcesRouter: sourcesRouter,
 });
 
 export type AppRouter = typeof appRouter;

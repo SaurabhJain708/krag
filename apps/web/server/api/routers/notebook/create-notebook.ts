@@ -1,5 +1,6 @@
 import { uploadFile } from "@/lib/upload-file";
 import { protectedProcedure } from "@/server/api/trpc";
+import { Encryption } from "@repo/db";
 import { z } from "zod";
 
 const MAX_NAME_LENGTH = 100;
@@ -10,13 +11,16 @@ export const CreateNotebook = protectedProcedure
     z.object({
       name: z.string().min(1, "Name is required").max(MAX_NAME_LENGTH),
       description: z.string().max(MAX_DESCRIPTION_LENGTH).optional(),
-      // 1. Change input to accept Base64 string + Mime Type
       imageBase64: z.string().optional(),
-      imageType: z.string().optional(), // e.g. "image/png"
+      imageType: z.string().optional(),
     })
   )
   .mutation(async ({ input, ctx }) => {
     const userId = ctx.session.user.id;
+    const encryption = ctx.session.user.encryption;
+    const isEncrypted =
+      encryption === Encryption.SimpleEncryption ||
+      encryption === Encryption.AdvancedEncryption;
     const { name, description, imageBase64, imageType } = input;
 
     let imageUrl: string | null = null;
@@ -39,6 +43,7 @@ export const CreateNotebook = protectedProcedure
         description: description ?? null,
         userId,
         image: imageUrl,
+        encrypted: isEncrypted,
       },
     });
     return notebook;

@@ -40,8 +40,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 const ENCRYPTION_KEY_STORAGE = "encryption_key";
-const SIMPLE_ENCRYPTION_STORAGE = "simple_encryption_enabled";
-const ADVANCED_ENCRYPTION_STORAGE = "advanced_encryption_enabled";
 
 export default function SettingsPage() {
   const user = useCurrentUser();
@@ -71,6 +69,9 @@ export default function SettingsPage() {
   const deleteAllEncryptedDataMutation =
     trpc.userRouter.deleteAllEncryptedData.useMutation();
 
+  const handleEncryptionMutation =
+    trpc.userRouter.handleEncryption.useMutation();
+
   // Load encryption settings from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -79,15 +80,24 @@ export default function SettingsPage() {
         setEncryptionKey(storedKey);
         setHasStoredKey(true);
       }
-
-      const simpleEnabled =
-        localStorage.getItem(SIMPLE_ENCRYPTION_STORAGE) === "true";
-      const advancedEnabled =
-        localStorage.getItem(ADVANCED_ENCRYPTION_STORAGE) === "true";
-      setSimpleEncryption(simpleEnabled);
-      setAdvancedEncryption(advancedEnabled);
     }
   }, []);
+
+  // Initialize encryption toggles from authenticated user
+  useEffect(() => {
+    if (!user) return;
+
+    if (user.encryption === "SimpleEncryption") {
+      setSimpleEncryption(true);
+      setAdvancedEncryption(false);
+    } else if (user.encryption === "AdvancedEncryption") {
+      setSimpleEncryption(false);
+      setAdvancedEncryption(true);
+    } else {
+      setSimpleEncryption(false);
+      setAdvancedEncryption(false);
+    }
+  }, [user]);
 
   const handleSaveKey = () => {
     if (encryptionKey.trim() && typeof window !== "undefined") {
@@ -110,36 +120,12 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSimpleEncryptionChange = (checked: boolean) => {
-    if (typeof window !== "undefined") {
-      setSimpleEncryption(checked);
-      if (checked) {
-        localStorage.setItem(SIMPLE_ENCRYPTION_STORAGE, "true");
-        // Disable advanced encryption if simple is enabled
-        if (advancedEncryption) {
-          setAdvancedEncryption(false);
-          localStorage.removeItem(ADVANCED_ENCRYPTION_STORAGE);
-        }
-      } else {
-        localStorage.removeItem(SIMPLE_ENCRYPTION_STORAGE);
-      }
-    }
-  };
-
-  const handleAdvancedEncryptionChange = (checked: boolean) => {
-    if (typeof window !== "undefined") {
-      setAdvancedEncryption(checked);
-      if (checked) {
-        localStorage.setItem(ADVANCED_ENCRYPTION_STORAGE, "true");
-        // Disable simple encryption if advanced is enabled
-        if (simpleEncryption) {
-          setSimpleEncryption(false);
-          localStorage.removeItem(SIMPLE_ENCRYPTION_STORAGE);
-        }
-      } else {
-        localStorage.removeItem(ADVANCED_ENCRYPTION_STORAGE);
-      }
-    }
+  const setEncryptionMode = (
+    mode: "SimpleEncryption" | "AdvancedEncryption" | "NotEncrypted"
+  ) => {
+    setSimpleEncryption(mode === "SimpleEncryption");
+    setAdvancedEncryption(mode === "AdvancedEncryption");
+    handleEncryptionMutation.mutate({ encryption: mode });
   };
 
   return (
@@ -354,7 +340,15 @@ export default function SettingsPage() {
                       <Switch
                         id="simple-encryption"
                         checked={simpleEncryption}
-                        onCheckedChange={handleSimpleEncryptionChange}
+                        onCheckedChange={(checked) => {
+                          if (!hasStoredKey) return;
+                          const mode = checked
+                            ? "SimpleEncryption"
+                            : advancedEncryption
+                              ? "AdvancedEncryption"
+                              : "NotEncrypted";
+                          setEncryptionMode(mode);
+                        }}
                         disabled={!hasStoredKey}
                         className={
                           hasStoredKey
@@ -391,7 +385,15 @@ export default function SettingsPage() {
                       <Switch
                         id="advanced-encryption"
                         checked={advancedEncryption}
-                        onCheckedChange={handleAdvancedEncryptionChange}
+                        onCheckedChange={(checked) => {
+                          if (!hasStoredKey) return;
+                          const mode = checked
+                            ? "AdvancedEncryption"
+                            : simpleEncryption
+                              ? "SimpleEncryption"
+                              : "NotEncrypted";
+                          setEncryptionMode(mode);
+                        }}
                         disabled={!hasStoredKey}
                         className={
                           hasStoredKey

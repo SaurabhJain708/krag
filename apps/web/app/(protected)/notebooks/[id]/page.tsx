@@ -9,7 +9,6 @@ import {
   Upload,
   FileText,
   ChevronUp,
-  MoreVertical,
   ChevronLeft,
   ChevronRight,
   ArrowRight,
@@ -39,7 +38,7 @@ export default function NotebookDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: _id } = use(params);
+  const { id: notebookId } = use(params);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
   const [sourceCount] = useState(0); // Will be fetched from API
   const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);

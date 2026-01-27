@@ -37,6 +37,11 @@ enum Encryption {
   AdvancedEncryption
 }
 
+enum FileType {
+  pdf
+  url
+}
+
 model User {
   id            String     @id
   name          String
@@ -147,6 +152,7 @@ model Source {
   processingStatus FileProcessingStatus @default(uploading)
   notebookId       String
   notebook         Notebook             @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  type             FileType             @default(pdf)
 
   @@index([userId])
   @@index([notebookId])
