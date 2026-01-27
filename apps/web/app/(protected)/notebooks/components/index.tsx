@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import {
-  BookOpen,
-  Plus,
-  Settings,
-  User,
-  LayoutGrid,
-  LayoutList,
-} from "lucide-react";
+import { Plus, Settings, User, LayoutGrid, LayoutList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,6 +26,7 @@ import type { ViewType } from "@/app/(protected)/notebooks/types";
 import { trpc } from "@/server/trpc/react";
 import { signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function NotebooksPage() {
   const [view, setView] = useState<ViewType>("grid");
@@ -88,15 +82,19 @@ export default function NotebooksPage() {
         <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="group flex items-center gap-3">
-              <div className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-linear-to-br from-blue-500 via-purple-500 to-pink-500 shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl">
-                <BookOpen className="h-5 w-5 text-white" />
-              </div>
+              <Image
+                src="/favicon.ico"
+                alt="Krag logo"
+                width={45}
+                height={45}
+                className="cursor-pointer transition-transform duration-200 hover:scale-110"
+              />
               <div className="flex flex-col">
                 <h1 className="cursor-pointer bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-xl font-bold text-transparent transition-all group-hover:from-blue-700 group-hover:to-purple-700">
                   Krag
                 </h1>
                 <span className="text-muted-foreground -mt-1 hidden text-[10px] sm:block">
-                  AI Notebook
+                  Where retrieval meets privacy
                 </span>
               </div>
             </div>
@@ -248,9 +246,13 @@ export default function NotebooksPage() {
         ) : sortedNotebooks.length === 0 ? (
           <div className="flex min-h-[60vh] flex-col items-center justify-center py-16">
             <div className="flex max-w-md flex-col items-center gap-6 text-center">
-              <div className="bg-muted/50 flex h-20 w-20 items-center justify-center rounded-xl">
-                <BookOpen className="text-muted-foreground/60 h-10 w-10" />
-              </div>
+              <Image
+                src="/favicon.ico"
+                alt="Krag logo"
+                width={200}
+                height={200}
+                className="opacity-90"
+              />
               <div className="space-y-2">
                 <h2 className="text-foreground text-xl font-semibold">
                   No notebooks yet

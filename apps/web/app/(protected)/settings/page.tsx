@@ -45,6 +45,7 @@ export default function SettingsPage() {
   const user = useCurrentUser();
   const { data: stats, isLoading } = trpc.userRouter.getStats.useQuery();
   const router = useRouter();
+  const utils = trpc.useUtils();
 
   const [encryptionKey, setEncryptionKey] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -61,13 +62,17 @@ export default function SettingsPage() {
   const deleteAllDataMutation = trpc.userRouter.deleteAllData.useMutation({
     onSuccess: () => {
       setShowDeleteAllDataModal(false);
-      // Optionally redirect or show success message
+      utils.notebookRouter.getNotebooks.invalidate();
       router.push("/notebooks");
     },
   });
 
   const deleteAllEncryptedDataMutation =
-    trpc.userRouter.deleteAllEncryptedData.useMutation();
+    trpc.userRouter.deleteAllEncryptedData.useMutation({
+      onSuccess: () => {
+        utils.notebookRouter.getNotebooks.invalidate();
+      },
+    });
 
   const handleEncryptionMutation =
     trpc.userRouter.handleEncryption.useMutation();
