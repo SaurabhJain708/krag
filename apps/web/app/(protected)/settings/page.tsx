@@ -55,6 +55,21 @@ export default function SettingsPage() {
   const [simpleEncryption, setSimpleEncryption] = useState(false);
   const [advancedEncryption, setAdvancedEncryption] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteAllDataModal, setShowDeleteAllDataModal] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+
+  const CONFIRMATION_TEXT = "YES I WANT TO DELETE ALL DATA";
+
+  const deleteAllDataMutation = trpc.userRouter.deleteAllData.useMutation({
+    onSuccess: () => {
+      setShowDeleteAllDataModal(false);
+      // Optionally redirect or show success message
+      router.push("/notebooks");
+    },
+  });
+
+  const deleteAllEncryptedDataMutation =
+    trpc.userRouter.deleteAllEncryptedData.useMutation();
 
   // Load encryption settings from localStorage on mount
   useEffect(() => {
@@ -85,6 +100,9 @@ export default function SettingsPage() {
 
   const handleDeleteKey = () => {
     if (typeof window !== "undefined") {
+      // Trigger backend cleanup of all encrypted data when the key is removed
+      deleteAllEncryptedDataMutation.mutate();
+
       localStorage.removeItem(ENCRYPTION_KEY_STORAGE);
       setEncryptionKey("");
       setHasStoredKey(false);
@@ -420,8 +438,117 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Danger Zone Card */}
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              <CardDescription>
+                Irreversible and destructive actions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="border-destructive/20 bg-destructive/5 flex items-center justify-between gap-4 rounded-lg border p-4">
+                  <div className="flex-1 space-y-1">
+                    <h3 className="text-destructive font-semibold">
+                      Delete All Data
+                    </h3>
+                    <p className="text-muted-foreground text-sm">
+                      Permanently delete all your notebooks, files, sources, and
+                      messages. This action cannot be undone.
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDeleteAllDataModal(true)}
+                    className="shrink-0 cursor-pointer"
+                    disabled={deleteAllDataMutation.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete All
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Delete All Data Confirmation Modal */}
+      <Dialog
+        open={showDeleteAllDataModal}
+        onOpenChange={(open) => {
+          setShowDeleteAllDataModal(open);
+          if (!open) {
+            setDeleteConfirmationText("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              Delete All Data?
+            </DialogTitle>
+            <DialogDescription>
+              Are you absolutely sure? This will permanently delete all your
+              notebooks, files, sources, messages, and all associated data. This
+              action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="delete-confirmation"
+                className="text-sm font-medium"
+              >
+                Type{" "}
+                <span className="text-destructive font-mono">
+                  {CONFIRMATION_TEXT}
+                </span>{" "}
+                to confirm:
+              </Label>
+              <Input
+                id="delete-confirmation"
+                type="text"
+                placeholder={CONFIRMATION_TEXT}
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                className="font-mono"
+                disabled={deleteAllDataMutation.isPending}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteAllDataModal(false);
+                setDeleteConfirmationText("");
+              }}
+              className="cursor-pointer"
+              disabled={deleteAllDataMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteAllDataMutation.mutate()}
+              className="cursor-pointer"
+              disabled={
+                deleteAllDataMutation.isPending ||
+                deleteConfirmationText !== CONFIRMATION_TEXT
+              }
+            >
+              {deleteAllDataMutation.isPending ? (
+                <>Deleting...</>
+              ) : (
+                <>Delete All Data</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>

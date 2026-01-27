@@ -82,36 +82,38 @@ export default function NotebookDetailPage({
   return (
     <div className="bg-muted/20 flex h-screen flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-background/80 border-border/50 z-10 flex h-16 shrink-0 items-center justify-between border-b px-8 shadow-sm backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 shadow-md">
+      <header className="bg-background/80 border-border/50 z-10 flex shrink-0 flex-col border-b px-4 py-2 shadow-sm backdrop-blur-sm sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-0">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-gray-800 to-gray-900 shadow-md">
             <BookOpen className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col">
-            <h1 className="text-foreground text-base leading-tight font-semibold">
+            <h1 className="text-foreground text-sm leading-tight font-semibold sm:text-base">
               Untitled notebook
             </h1>
-            <p className="text-muted-foreground text-xs">0 sources</p>
+            <p className="text-muted-foreground text-[11px] sm:text-xs">
+              0 sources
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0 sm:flex-nowrap">
           <Button
             variant="ghost"
             size="sm"
-            className="text-foreground hover:bg-muted/80 h-9 rounded-lg px-3 transition-colors"
+            className="text-foreground hover:bg-muted/80 h-8 rounded-lg px-2.5 text-xs transition-colors sm:h-9 sm:px-3 sm:text-sm"
             onClick={() => router.push("/settings")}
           >
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+            <Settings className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
+            <span className="xs:inline hidden sm:inline">Settings</span>
           </Button>
-          <div className="bg-border mx-1 h-6 w-px" />
+          <div className="bg-border mx-1 hidden h-6 w-px sm:block" />
           <Badge
             variant="secondary"
-            className="cursor-pointer rounded-lg border-0 bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-md"
+            className="cursor-pointer rounded-lg border-0 bg-linear-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-sm transition-all hover:shadow-md sm:px-2.5 sm:py-1 sm:text-xs"
           >
             PRO
           </Badge>
-          <div className="bg-border mx-1 h-6 w-px" />
+          <div className="bg-border mx-1 hidden h-6 w-px sm:block" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -119,7 +121,7 @@ export default function NotebookDetailPage({
                 size="icon"
                 className="hover:bg-muted/80 h-9 w-9 rounded-full p-0 transition-colors"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-gray-800 to-gray-900 shadow-sm">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-linear-to-br from-gray-800 to-gray-900 shadow-sm">
                   <User className="h-3.5 w-3.5 text-white" />
                 </div>
               </Button>
@@ -142,13 +144,6 @@ export default function NotebookDetailPage({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-muted/80 h-9 w-9 rounded-lg transition-colors"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </Button>
         </div>
       </header>
 

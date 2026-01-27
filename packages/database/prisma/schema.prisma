@@ -114,6 +114,7 @@ model Notebook {
   messages    Message[]
   sources     Source[]
   image       String?
+  encrypted   Boolean     @default(false)
 
   @@index([userId])
   @@map("notebook")
@@ -137,7 +138,7 @@ model Message {
 model Source {
   id               String               @id @default(uuid())
   name             String
-  path             String
+  path             String?
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   userId           String
