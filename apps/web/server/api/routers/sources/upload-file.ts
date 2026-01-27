@@ -48,13 +48,12 @@ export const uploadFile = protectedProcedure
       "file_processing_queue",
       JSON.stringify({
         id: data.id,
-        userId,
-        notebookId,
-        fileName,
         mimeType: "application/pdf",
         signedUrl,
       })
     );
+
+    await redis.set(`source:${data.id}`, FileProcessingStatus.queued);
 
     const source = await ctx.db.source.create({
       data: {

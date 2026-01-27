@@ -13,6 +13,9 @@ import {
   ChevronRight,
   ArrowRight,
   ChevronDown,
+  Loader2,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +35,8 @@ import {
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import { trpc } from "@/server/trpc/react";
+import { toast } from "sonner";
 
 export default function NotebookDetailPage({
   params,
@@ -40,17 +45,121 @@ export default function NotebookDetailPage({
 }) {
   const { id: notebookId } = use(params);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
-  const [sourceCount] = useState(0); // Will be fetched from API
   const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // TODO: Use _id to fetch notebook data
+  const { data: sources = [], isLoading: isLoadingSources } =
+    trpc.sourcesRouter.getSources.useQuery({
+      notebookId,
+    });
 
-  const handleFileSelect = (files: FileList | null) => {
-    if (files && files.length > 0) {
-      // TODO: Handle file upload
-      console.log("Files selected:", files);
+  const sourcesNeedingPolling = sources
+    .filter(
+      (source) =>
+        source.processingStatus !== "completed" &&
+        source.processingStatus !== "failed"
+    )
+    .map((source) => source.id);
+
+  const { data: liveStatuses } = trpc.sourcesRouter.pollStatus.useQuery(
+    { sourceIds: sourcesNeedingPolling },
+    {
+      enabled: sourcesNeedingPolling.length > 0,
+      refetchInterval: 2000,
+    }
+  );
+
+  console.log(liveStatuses);
+
+  const sourceCount = sources.length;
+
+  const utils = trpc.useUtils();
+  const uploadFile = trpc.sourcesRouter.uploadFile.useMutation({
+    onSuccess: () => {
+      toast.success("File uploaded successfully!", {
+        id: "upload-file",
+      });
+      utils.sourcesRouter.getSources.invalidate({ notebookId });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to upload file", {
+        id: "upload-file",
+      });
+    },
+  });
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        if (!reader.result || typeof reader.result !== "string") {
+          reject(new Error("Failed to read file"));
+          return;
+        }
+        const base64 = reader.result.split(",")[1];
+        if (!base64) {
+          reject(new Error("Failed to extract base64 data"));
+          return;
+        }
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const getProcessingStatusInfo = (status: string) => {
+    const statusLabels: Record<string, string> = {
+      uploading: "Uploading",
+      queued: "Queued",
+      processing: "Processing",
+      starting: "Starting",
+      vision: "Analyzing vision",
+      extracting: "Extracting content",
+      images: "Processing images",
+      chunking: "Chunking",
+      completed: "Completed",
+      failed: "Failed",
+    };
+
+    const isProcessing =
+      status !== "completed" && status !== "failed" && status !== "uploading";
+    const isCompleted = status === "completed";
+    const isFailed = status === "failed";
+    const isUploading = status === "uploading";
+
+    return {
+      label: statusLabels[status] || status,
+      isProcessing,
+      isCompleted,
+      isFailed,
+      isUploading,
+    };
+  };
+
+  const handleFileSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    toast.loading("Uploading file...", { id: "upload-file" });
+
+    try {
+      // Upload files one by one
+      for (const file of Array.from(files)) {
+        const fileBase64 = await fileToBase64(file);
+        await uploadFile.mutateAsync({
+          fileBase64,
+          fileName: file.name,
+          notebookId,
+        });
+      }
       setIsAddSourceDialogOpen(false);
+    } catch (error) {
+      // Error is handled by onError callback
+      console.error("Upload error:", error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -91,7 +200,7 @@ export default function NotebookDetailPage({
               Untitled notebook
             </h1>
             <p className="text-muted-foreground text-[11px] sm:text-xs">
-              0 sources
+              {isLoadingSources ? "Loading..." : `${sourceCount} sources`}
             </p>
           </div>
         </div>
@@ -183,24 +292,98 @@ export default function NotebookDetailPage({
               className="bg-background text-foreground border-border/60 hover:bg-muted/60 mb-4 h-12 w-full rounded-lg border shadow-sm transition-all hover:shadow-md"
               size="lg"
               onClick={() => setIsAddSourceDialogOpen(true)}
+              disabled={isUploading}
             >
               <Plus className="mr-2 h-5 w-5" />
               Add sources
             </Button>
 
-            {/* Empty State */}
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
-              <FileText className="text-muted-foreground/40 h-16 w-16" />
-              <div className="space-y-2">
-                <p className="text-foreground text-sm font-medium">
-                  Saved sources will appear here
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  Click Add source above to add PDFs, websites, text, videos or
-                  audio files. Or import a file directly from Google Drive.
-                </p>
+            {/* Sources List */}
+            {isLoadingSources ? (
+              <div className="flex flex-1 items-center justify-center">
+                <div className="text-muted-foreground text-sm">Loading...</div>
               </div>
-            </div>
+            ) : sources.length > 0 ? (
+              <div className="space-y-2">
+                {sources.map((source) => {
+                  const statusInfo = getProcessingStatusInfo(
+                    liveStatuses?.find((status) => status.id === source.id)
+                      ?.status || source.processingStatus
+                  );
+                  const isActive =
+                    statusInfo.isProcessing || statusInfo.isUploading;
+                  return (
+                    <div
+                      key={source.id}
+                      className="bg-background border-border/60 hover:bg-muted/50 relative flex items-center gap-3 overflow-hidden rounded-lg border p-3 transition-colors"
+                    >
+                      {/* Animated gradient bar */}
+                      {isActive && (
+                        <div className="absolute right-0 bottom-0 left-0 h-0.5 overflow-hidden rounded-b-lg">
+                          <div
+                            className="h-full w-full"
+                            style={{
+                              background:
+                                "linear-gradient(90deg, transparent 0%, #3b82f6 20%, #60a5fa 50%, #3b82f6 80%, transparent 100%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 2s infinite linear",
+                            }}
+                          />
+                        </div>
+                      )}
+                      {statusInfo.isProcessing || statusInfo.isUploading ? (
+                        <Loader2 className="text-primary h-5 w-5 shrink-0 animate-spin" />
+                      ) : statusInfo.isCompleted ? (
+                        <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
+                      ) : statusInfo.isFailed ? (
+                        <XCircle className="text-destructive h-5 w-5 shrink-0" />
+                      ) : (
+                        <FileText className="text-muted-foreground h-5 w-5 shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-foreground truncate text-sm font-medium">
+                          {source.name}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-muted-foreground text-xs">
+                            {source.type}
+                          </p>
+                          <span className="text-muted-foreground">•</span>
+                          <p
+                            className={cn(
+                              "text-xs",
+                              statusInfo.isProcessing || statusInfo.isUploading
+                                ? "text-primary"
+                                : statusInfo.isCompleted
+                                  ? "text-green-500"
+                                  : statusInfo.isFailed
+                                    ? "text-destructive"
+                                    : "text-muted-foreground"
+                            )}
+                          >
+                            {statusInfo.label}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Empty State */
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+                <FileText className="text-muted-foreground/40 h-16 w-16" />
+                <div className="space-y-2">
+                  <p className="text-foreground text-sm font-medium">
+                    Saved sources will appear here
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Click Add source above to add PDFs, websites, text, videos
+                    or audio files. Or import a file directly from Google Drive.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -285,17 +468,22 @@ export default function NotebookDetailPage({
             <div className="space-y-4">
               <div
                 className={cn(
-                  "cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors",
+                  "rounded-lg border-2 border-dashed p-12 text-center transition-colors",
                   isDragging
                     ? "border-primary bg-primary/5"
-                    : "border-border/60 hover:border-border"
+                    : "border-border/60 hover:border-border",
+                  isUploading
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer"
                 )}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => {
-                  const input = document.getElementById("file-upload-input");
-                  input?.click();
+                  if (!isUploading) {
+                    const input = document.getElementById("file-upload-input");
+                    input?.click();
+                  }
                 }}
               >
                 <input
@@ -304,6 +492,7 @@ export default function NotebookDetailPage({
                   multiple
                   className="hidden"
                   onChange={(e) => handleFileSelect(e.target.files)}
+                  disabled={isUploading}
                 />
                 <div className="flex flex-col items-center gap-4">
                   <div className="bg-muted/50 flex h-16 w-16 items-center justify-center rounded-full">
@@ -322,13 +511,16 @@ export default function NotebookDetailPage({
                     className="mt-2"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const input =
-                        document.getElementById("file-upload-input");
-                      input?.click();
+                      if (!isUploading) {
+                        const input =
+                          document.getElementById("file-upload-input");
+                        input?.click();
+                      }
                     }}
+                    disabled={isUploading}
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    Select files
+                    {isUploading ? "Uploading..." : "Select files"}
                   </Button>
                 </div>
               </div>
