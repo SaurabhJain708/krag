@@ -1,0 +1,12 @@
+{
+  "name": "ingestion-worker",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n w1,w2,w3 -c cyan,magenta,yellow \"uv run main.py\" \"uv run main.py\" \"uv run main.py\"",
+    "start": "uv run main.py"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

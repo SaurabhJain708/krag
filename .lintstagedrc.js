@@ -47,5 +47,14 @@ module.exports = {
     ];
   },
   "*.{md,json,css}": ["prettier --write"],
-  "*.py": ["black --check --diff", "ruff check"],
+  "*.py": [
+    (filenames) => {
+      const files = filenames.map((f) => `"${f}"`).join(" ");
+      return `uv run black ${files}`;
+    },
+    (filenames) => {
+      const files = filenames.map((f) => `"${f}"`).join(" ");
+      return `uv run ruff check --fix ${files}`;
+    },
+  ],
 };

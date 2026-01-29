@@ -49,7 +49,8 @@ export const uploadFile = protectedProcedure
       JSON.stringify({
         id: data.id,
         mimeType: "application/pdf",
-        signedUrl,
+        base64: fileBase64,
+        user_id: userId,
       })
     );
 

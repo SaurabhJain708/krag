@@ -1,3 +1,23 @@
+[project]
+name = "krag-root"
+version = "0.0.0"
+description = "Root workspace for Hybrid Monorepo"
+requires-python = ">=3.12"
+dependencies = [
+    "dotenv>=0.9.9",
+    "modal>=1.3.1",
+    "redis>=7.1.0",
+]
+
+# This is the critical part that fixes your error
+[tool.uv.workspace]
+members = [
+    "apps/*",
+]
+exclude = [
+    "apps/web"
+]
+
 [tool.black]
 line-length = 88
 target-version = ['py311', 'py312']
