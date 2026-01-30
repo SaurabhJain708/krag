@@ -2,7 +2,7 @@ import json
 
 from lib.chunker import process_chunks
 from lib.redis_client import update_source_status
-from modal_service import FlorenceSummarizer, MarkerParser
+from modal_service import BGEM3Embedder, FlorenceSummarizer, MarkerParser
 from schemas.index import FileProcessingStatus
 from utils.split_pdf_pages import (
     base64_to_chunked_pdfs,
@@ -11,6 +11,7 @@ from utils.split_pdf_pages import (
 
 remote_parser = MarkerParser()
 remote_summarizer = FlorenceSummarizer()
+remote_embedder = BGEM3Embedder()
 
 
 def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
@@ -61,6 +62,19 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
         update_source_status(file_id, FileProcessingStatus.chunking.value)
         db_chunks, parent_chunks, child_chunks = process_chunks(extracted_text)
 
+        # Extract text content from child chunks for embedding
+        child_texts = [chunk["content"] for chunk in child_chunks]
+        print(
+            f"🔢 Generating embeddings for {len(child_texts)} child chunks...",
+            flush=True,
+        )
+
+        # Use .spawn() for async execution, then .get() to get the result
+        result_handle = remote_embedder.generate_embeddings.spawn(child_texts)
+        embeddings = result_handle.get()
+
+        print(f"✅ Generated {len(embeddings)} embeddings", flush=True)
+
         with open("extracted_text.txt", "w") as f:
             f.write(extracted_text)
 
@@ -72,6 +86,9 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
 
         with open("child_chunks.json", "w") as f:
             json.dump(child_chunks, f)
+
+        with open("embeddings.json", "w") as f:
+            json.dump(embeddings, f)
 
         update_source_status(file_id, FileProcessingStatus.completed.value)
 

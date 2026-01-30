@@ -5,12 +5,20 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "./../generated/client"
+  provider        = "prisma-client"
+  output          = "./../generated/client"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+generator client_py {
+  provider  = "prisma-client-py"
+  interface = "asyncio"
+  output    = "../../../apps/ingestion-worker/generated/db"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum MessageRole {
@@ -119,7 +127,7 @@ model Notebook {
   messages    Message[]
   sources     Source[]
   image       String?
-  encrypted   Boolean     @default(false)
+  encrypted   Boolean   @default(false)
 
   @@index([userId])
   @@map("notebook")
@@ -153,8 +161,37 @@ model Source {
   notebookId       String
   notebook         Notebook             @relation(fields: [notebookId], references: [id], onDelete: Cascade)
   type             FileType             @default(pdf)
+  documentChunks   DocumentChunk[]
+  parentChunks     ParentChunk[]
 
   @@index([userId])
   @@index([notebookId])
-  @@map("file")
+}
+
+model DocumentChunk {
+  id      String @id @default(uuid())
+  content String
+
+  page       Int?
+  chunkIndex Int
+
+  embedding Unsupported("vector(1536)")
+
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  parentIds String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sourceId])
+}
+
+model ParentChunk {
+  id       String @id
+  content  String
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
 }

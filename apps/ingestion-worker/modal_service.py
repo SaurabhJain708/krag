@@ -61,6 +61,22 @@ florence_image = (
     )
 )
 
+# BGE-M3 Image
+bge_m3_image = (
+    modal.Image.debian_slim(python_version="3.10")
+    .env({"DEBIAN_FRONTEND": "noninteractive", "TZ": "Etc/UTC"})
+    .pip_install(
+        "torch==2.3.0",
+        "transformers==4.46.3",  # PINNED: Fixes the 5.0.0 incompatibility
+        "FlagEmbedding",
+        "numpy",
+    )
+    .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
+    .run_commands(
+        "python -c 'from FlagEmbedding import BGEM3FlagModel; BGEM3FlagModel(\"BAAI/bge-m3\", use_fp16=False)'"
+    )
+)
+
 # App
 app = modal.App("ingestion-worker")
 
@@ -135,7 +151,6 @@ class MarkerParser:
                 # Convert PIL Image to bytes if needed (for Modal serialization)
                 if hasattr(image_data, "save"):  # Check if it's a PIL Image
                     import io
-
 
                     # Convert PIL Image to bytes (PNG format)
                     img_bytes = io.BytesIO()
@@ -235,3 +250,44 @@ class FlorenceSummarizer:
 
         # Return the clean string
         return parsed_answer["<MORE_DETAILED_CAPTION>"]
+
+
+@app.cls(
+    gpu="L4",
+    image=bge_m3_image,
+    max_containers=4,
+    cpu=4.0,
+    scaledown_window=60,
+    secrets=[modal.Secret.from_dotenv()],
+)
+@modal.concurrent(max_inputs=32)  # High concurrency allowed: Embeddings batch well
+class BGEM3Embedder:
+    @modal.enter()
+    def setup(self):
+        """
+        Loads the BGE-M3 model into GPU memory once per container start.
+        """
+        from FlagEmbedding import BGEM3FlagModel  # type: ignore
+
+        # Load model in FP16 for speed and lower VRAM usage
+        self.model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True, device="cuda")
+
+    @modal.method()
+    def generate_embeddings(
+        self, texts: list[str], batch_size: int = 12
+    ) -> list[list[float]]:
+        """
+        Generates dense embeddings for a list of text strings.
+        Returns a list of list of floats.
+        """
+        # BGE-M3 can output Dense, Sparse, and ColBERT vectors.
+        # For standard ingestion, we typically only need the Dense vector.
+        output = self.model.encode(
+            texts,
+            batch_size=batch_size,
+            max_length=8192,
+            return_dense=True,
+        )
+
+        # Output['dense_vecs'] is a numpy array, convert to list for serialization
+        return output["dense_vecs"].tolist()

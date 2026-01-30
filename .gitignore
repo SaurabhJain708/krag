@@ -54,6 +54,9 @@ dmypy.json
 .pytype/
 cython_debug/
 
+# Generated Prisma Python client
+apps/ingestion-worker/generated/
+
 # env
 .env
 .env.local
