@@ -1,7 +1,13 @@
 import modal
-from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    # This suppresses the error inside the container where
+    # python-dotenv is not installed, preventing the crash.
+    pass
 
 # Marker Parser Image
 pdf_parser_image = (
@@ -67,6 +73,7 @@ app = modal.App("ingestion-worker")
     cpu=8.0,  # Feeder: 2 vCPUs per worker to prevent bottlenecks
     scaledown_window=60,  # Keep warm for 60s
     retries=3,
+    secrets=[modal.Secret.from_dotenv()],
 )
 @modal.concurrent(max_inputs=4)  # Density: 4 requests running per GPU
 class MarkerParser:
@@ -115,14 +122,26 @@ class MarkerParser:
             # 3. Extract Output
             text, _, images = text_from_rendered(rendered)
 
-            # 4. Replace image names with UUIDs
+            # 4. Replace image names with UUIDs and convert PIL Images to bytes
             # images is a dict: {old_filename: image_data, ...}
+            # image_data can be PIL Image objects or bytes
             new_images = {}
             name_mapping = {}  # old_name -> new_uuid
 
             for old_name, image_data in images.items():
                 # Generate UUIDv4 for each image
                 image_uuid = str(uuid.uuid4())
+
+                # Convert PIL Image to bytes if needed (for Modal serialization)
+                if hasattr(image_data, "save"):  # Check if it's a PIL Image
+                    import io
+
+
+                    # Convert PIL Image to bytes (PNG format)
+                    img_bytes = io.BytesIO()
+                    image_data.save(img_bytes, format="PNG")
+                    image_data = img_bytes.getvalue()
+
                 new_images[image_uuid] = image_data
                 name_mapping[old_name] = image_uuid
 
@@ -160,6 +179,7 @@ class MarkerParser:
     retries=3,
     cpu=4,
     scaledown_window=60,
+    secrets=[modal.Secret.from_dotenv()],
 )
 @modal.concurrent(max_inputs=8)  # 8 concurrent requests per container
 class FlorenceSummarizer:

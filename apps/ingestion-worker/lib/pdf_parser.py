@@ -14,14 +14,21 @@ remote_summarizer = FlorenceSummarizer()
 
 
 def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
-    update_source_status(file_id, FileProcessingStatus.starting.value)
-    split_pdf_chunks = base64_to_chunked_pdfs(pdf_base_64)
+    try:
+        update_source_status(file_id, FileProcessingStatus.starting.value)
+        split_pdf_chunks = base64_to_chunked_pdfs(pdf_base_64)
 
-    # 2. Connect to GPU
-    update_source_status(file_id, FileProcessingStatus.extracting.value)
-    results = list[tuple[str, dict[str, bytes]]](
-        remote_parser.parse_secure_pdf.map(split_pdf_chunks)
-    )
+        if not split_pdf_chunks:
+            raise ValueError("Failed to split PDF into chunks")
+
+        # 2. Connect to GPU
+        update_source_status(file_id, FileProcessingStatus.extracting.value)
+        results = list[tuple[str, dict[str, bytes]]](
+            remote_parser.parse_secure_pdf.map(split_pdf_chunks)
+        )
+    except Exception:
+        update_source_status(file_id, FileProcessingStatus.failed.value)
+        raise
 
     extracted_text = "".join([result[0] + "\n\n" for result in results])
     extracted_images = {k: v for result in results for k, v in result[1].items()}
@@ -30,11 +37,17 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
     image_bytes_list = list(extracted_images.values())
 
     if image_bytes_list:
-        update_source_status(file_id, FileProcessingStatus.images.value)
-        summary_results = list(remote_summarizer.summarize_image.map(image_bytes_list))
+        try:
+            update_source_status(file_id, FileProcessingStatus.images.value)
+            summary_results = list(
+                remote_summarizer.summarize_image.map(image_bytes_list)
+            )
 
-        # Zip IDs back with their summaries so you know which is which
-        image_summaries = dict(zip(image_uuids, summary_results, strict=True))
+            # Zip IDs back with their summaries so you know which is which
+            image_summaries = dict(zip(image_uuids, summary_results, strict=True))
+        except Exception:
+            update_source_status(file_id, FileProcessingStatus.failed.value)
+            raise
     else:
         image_summaries = {}
 
@@ -44,24 +57,25 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
             extracted_text, image_summaries
         )
 
-    update_source_status(file_id, FileProcessingStatus.chunking.value)
-    db_chunks, parent_chunks, child_chunks = process_chunks(extracted_text)
+    try:
+        update_source_status(file_id, FileProcessingStatus.chunking.value)
+        db_chunks, parent_chunks, child_chunks = process_chunks(extracted_text)
 
-    with open("extracted_text.txt", "w") as f:
-        f.write(extracted_text)
+        with open("extracted_text.txt", "w") as f:
+            f.write(extracted_text)
 
-    with open("extracted_images.json", "w") as f:
-        json.dump(extracted_images, f)
+        with open("db_chunks.json", "w") as f:
+            json.dump(db_chunks, f)
 
-    with open("db_chunks.json", "w") as f:
-        json.dump(db_chunks, f)
+        with open("parent_chunks.json", "w") as f:
+            json.dump(parent_chunks, f)
 
-    with open("parent_chunks.json", "w") as f:
-        json.dump(parent_chunks, f)
+        with open("child_chunks.json", "w") as f:
+            json.dump(child_chunks, f)
 
-    with open("child_chunks.json", "w") as f:
-        json.dump(child_chunks, f)
+        update_source_status(file_id, FileProcessingStatus.completed.value)
 
-    update_source_status(file_id, FileProcessingStatus.completed.value)
-
-    return extracted_text, extracted_images
+        return extracted_text, extracted_images
+    except Exception:
+        update_source_status(file_id, FileProcessingStatus.failed.value)
+        raise

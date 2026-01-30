@@ -9,7 +9,6 @@ from lib.pdf_parser import parse_pdf
 from lib.redis_client import (
     close_redis_client,
     get_redis_client,
-    redis_client,
     reset_redis_client,
     update_source_status,
 )
@@ -22,8 +21,8 @@ def main():
     env_path = Path(__file__).parent / ".env"
     load_dotenv(dotenv_path=env_path)
 
-    # Ensure Redis client is initialized
-    get_redis_client()
+    # Get Redis client (initializes if needed)
+    redis_client = get_redis_client()
 
     queue_name = "file_processing_queue"
     print(f"🐍 Python Worker connected. Listening on '{queue_name}'...", flush=True)
@@ -36,6 +35,7 @@ def main():
             except redis.ConnectionError as e:
                 print(f"❌ Redis connection error: {e}. Reconnecting...", flush=True)
                 reset_redis_client()
+                redis_client = get_redis_client()  # Get the reconnected client
                 continue
             except redis.TimeoutError:
                 continue
