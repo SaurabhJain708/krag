@@ -5,5 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "langchain-text-splitters>=1.1.0",
+    "markdown-it-py>=4.0.0",
     "pypdf>=6.6.2",
 ]

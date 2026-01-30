@@ -1,6 +1,7 @@
 import base64
 import io
 import math
+import re
 from io import BytesIO
 
 from pypdf import PdfReader, PdfWriter
@@ -74,3 +75,39 @@ def base64_to_chunked_pdfs(
         split_pdfs.append(output_buffer.getvalue())
 
     return split_pdfs
+
+
+def replace_markdown_images_with_html(
+    text: str, image_id_to_summary: dict[str, str]
+) -> str:
+    """
+    Replaces markdown image syntax ![optional alt text](image_id) with
+    HTML-like syntax <img id={image_id} alt={summarised_text}/>.
+
+    Args:
+        text: Text containing markdown image syntax
+        image_id_to_summary: Dictionary mapping image IDs (UUIDs) to their summarized text
+
+    Returns:
+        Text with markdown images replaced by HTML-like img tags
+    """
+    # Pattern to match markdown image syntax: ![optional alt text](image_id)
+    image_pattern = r"!\[([^\]]*)\]\(([^\)]+)\)"
+
+    def replace_image_ref(match):
+        alt_text = match.group(1) if match.group(1) else ""
+        image_id = match.group(2).strip()
+
+        # Get summarized text for this image ID, fallback to original alt text if not found
+        summarised_text = image_id_to_summary.get(image_id, alt_text)
+
+        # Escape quotes in the summarized text to prevent issues
+        summarised_text = summarised_text.replace('"', "&quot;")
+
+        # Return HTML-like syntax with curly braces (JSX-style)
+        return f"<img id={{{image_id}}} alt={{{summarised_text}}}/>"
+
+    # Replace all markdown image references
+    modified_text = re.sub(image_pattern, replace_image_ref, text)
+
+    return modified_text
