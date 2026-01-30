@@ -1,7 +1,9 @@
 import json
 
 from lib.chunker import process_chunks
+from lib.redis_client import update_source_status
 from modal_service import FlorenceSummarizer, MarkerParser
+from schemas.index import FileProcessingStatus
 from utils.split_pdf_pages import (
     base64_to_chunked_pdfs,
     replace_markdown_images_with_html,
@@ -12,9 +14,11 @@ remote_summarizer = FlorenceSummarizer()
 
 
 def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
+    update_source_status(file_id, FileProcessingStatus.starting.value)
     split_pdf_chunks = base64_to_chunked_pdfs(pdf_base_64)
 
     # 2. Connect to GPU
+    update_source_status(file_id, FileProcessingStatus.extracting.value)
     results = list[tuple[str, dict[str, bytes]]](
         remote_parser.parse_secure_pdf.map(split_pdf_chunks)
     )
@@ -26,6 +30,7 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
     image_bytes_list = list(extracted_images.values())
 
     if image_bytes_list:
+        update_source_status(file_id, FileProcessingStatus.images.value)
         summary_results = list(remote_summarizer.summarize_image.map(image_bytes_list))
 
         # Zip IDs back with their summaries so you know which is which
@@ -39,6 +44,7 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
             extracted_text, image_summaries
         )
 
+    update_source_status(file_id, FileProcessingStatus.chunking.value)
     db_chunks, parent_chunks, child_chunks = process_chunks(extracted_text)
 
     with open("extracted_text.txt", "w") as f:
@@ -55,5 +61,7 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
 
     with open("child_chunks.json", "w") as f:
         json.dump(child_chunks, f)
+
+    update_source_status(file_id, FileProcessingStatus.completed.value)
 
     return extracted_text, extracted_images

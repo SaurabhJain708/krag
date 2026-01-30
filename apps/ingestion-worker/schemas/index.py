@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Literal, TypedDict
 
 
@@ -27,3 +28,16 @@ class SplitContent(TypedDict):
 class Finalised_chunk(TypedDict):
     type: Literal["text", "table"]
     content: str
+
+
+class FileProcessingStatus(str, Enum):
+    uploading = "uploading"
+    queued = "queued"
+    processing = "processing"
+    starting = "starting"
+    vision = "vision"
+    extracting = "extracting"
+    images = "images"
+    chunking = "chunking"
+    completed = "completed"
+    failed = "failed"
