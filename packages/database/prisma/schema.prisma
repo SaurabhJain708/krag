@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider        = "prisma-client"
+  provider        = "prisma-client-js"
   output          = "./../generated/client"
   previewFeatures = ["postgresqlExtensions"]
 }
@@ -19,6 +19,7 @@ generator client_py {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 enum MessageRole {

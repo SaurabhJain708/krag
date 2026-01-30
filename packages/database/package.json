@@ -2,18 +2,18 @@
   "name": "@repo/db",
   "version": "0.0.1",
   "scripts": {
-    "db:generate": "prisma generate && cd ../../apps/ingestion-worker && uv run prisma generate --schema=../../packages/database/prisma/schema.prisma --generator client_py",
+    "db:generate": "npx prisma@5.17.0 generate --generator client && cd ../../apps/ingestion-worker && uv run prisma generate --schema=../../packages/database/prisma/schema.prisma --generator client_py",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy"
   },
   "devDependencies": {
     "@types/node": "^22.19.7",
     "@types/pg": "^8.16.0",
-    "prisma": "^7.3.0"
+    "prisma": "5.17.0"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.3.0",
-    "@prisma/client": "^7.3.0",
+    "@prisma/adapter-pg": "5.17.0",
+    "@prisma/client": "5.17.0",
     "pg": "^8.17.2"
   },
   "exports": {
