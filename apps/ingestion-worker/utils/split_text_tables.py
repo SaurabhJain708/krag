@@ -1,6 +1,5 @@
-from types.index import SplitContent
-
 from markdown_it import MarkdownIt
+from schemas.index import SplitContent
 
 
 def extract_tables_and_text(text: str) -> list[SplitContent]:

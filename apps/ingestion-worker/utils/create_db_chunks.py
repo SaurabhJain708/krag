@@ -1,5 +1,4 @@
-from types.index import Chunk, SplitContent
-
+from schemas.index import Chunk, SplitContent
 from utils.chunk_splitter import split_mixed_content
 
 

@@ -31,8 +31,17 @@ def base64_to_chunked_pdfs(
     # Decode string to raw bytes
     try:
         pdf_bytes = base64.b64decode(base64_string)
+        if len(pdf_bytes) == 0:
+            print("⚠️  WARNING: Decoded PDF is empty", flush=True)
+            return []
+        # Validate PDF header
+        if pdf_bytes[:4] != b"%PDF":
+            print(
+                "⚠️  WARNING: Decoded data doesn't appear to be a valid PDF (missing %PDF header)",
+                flush=True,
+            )
     except Exception as e:
-        print(f"Error decoding Base64: {e}")
+        print(f"❌ Error decoding Base64: {e}", flush=True)
         return []
 
     # --- Step 2: Load into PDF Reader ---
@@ -72,7 +81,16 @@ def base64_to_chunked_pdfs(
 
         output_buffer = BytesIO()
         writer.write(output_buffer)
-        split_pdfs.append(output_buffer.getvalue())
+        chunk_bytes = output_buffer.getvalue()
+
+        # Validate the chunk is a valid PDF by checking PDF header
+        if len(chunk_bytes) < 4 or chunk_bytes[:4] != b"%PDF":
+            print(
+                f"⚠️  WARNING: Chunk {len(split_pdfs)} doesn't have valid PDF header",
+                flush=True,
+            )
+
+        split_pdfs.append(chunk_bytes)
 
     return split_pdfs
 

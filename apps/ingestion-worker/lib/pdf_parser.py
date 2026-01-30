@@ -1,25 +1,22 @@
 import json
 
-import modal
 from lib.chunker import process_chunks
+from modal_service import FlorenceSummarizer, MarkerParser
 from utils.split_pdf_pages import (
     base64_to_chunked_pdfs,
     replace_markdown_images_with_html,
 )
 
-remote_parser = modal.Cls.lookup("ingestion-worker", "MarkerParser")
-remote_summarizer = modal.Cls.lookup("ingestion-worker", "FlorenceSummarizer")
+remote_parser = MarkerParser()
+remote_summarizer = FlorenceSummarizer()
 
 
 def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
     split_pdf_chunks = base64_to_chunked_pdfs(pdf_base_64)
 
     # 2. Connect to GPU
-    parser = remote_parser()
-    summarizer = remote_summarizer()
-
     results = list[tuple[str, dict[str, bytes]]](
-        parser.parse_secure_pdf.map(split_pdf_chunks)
+        remote_parser.parse_secure_pdf.map(split_pdf_chunks)
     )
 
     extracted_text = "".join([result[0] + "\n\n" for result in results])
@@ -29,7 +26,7 @@ def parse_pdf(pdf_base_64: str, file_id: str, user_id: str):
     image_bytes_list = list(extracted_images.values())
 
     if image_bytes_list:
-        summary_results = list(summarizer.summarize_image.map(image_bytes_list))
+        summary_results = list(remote_summarizer.summarize_image.map(image_bytes_list))
 
         # Zip IDs back with their summaries so you know which is which
         image_summaries = dict(zip(image_uuids, summary_results, strict=True))

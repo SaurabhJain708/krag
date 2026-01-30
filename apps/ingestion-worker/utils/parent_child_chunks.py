@@ -1,7 +1,7 @@
 import re
-from types.index import Child_Chunks, Chunk, Finalised_chunk, Parent_Chunks
 from uuid import uuid4
 
+from schemas.index import Child_Chunks, Chunk, Finalised_chunk, Parent_Chunks
 from utils.chunk_splitter import split_mixed_content
 from utils.tools import extract_child_ids, extract_parent_ids
 

@@ -26,19 +26,28 @@ pdf_parser_image = (
 
 # Florence Summarizer Image
 florence_image = (
-    modal.Image.debian_slim(python_version="3.10")
+    modal.Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .env({"DEBIAN_FRONTEND": "noninteractive", "TZ": "Etc/UTC"})
+    # 1. Force Install Specific Torch 2.3.0 (The most stable recent version)
+    # We use --index-url to STOP pip from looking at your local mirror (which has the weird 2.10 version)
     .pip_install(
-        "torch",
-        "transformers",
-        "pillow",
-        "einops",
-        "timm",
-        "flash_attn",  # Optional but speeds up inference significantly
+        "torch==2.3.0",
+        "torchvision==0.18.0",
+        extra_index_url="https://download.pytorch.org/whl/cu121",
+    )
+    # 2. Install Flash Attention from a known-good pre-built wheel
+    # This URL is the "Standard" one for Torch 2.3.0 + CUDA 12.1 + Python 3.10
+    .pip_install(
+        "https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.8/flash_attn-2.5.8+cu122torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl"
+    )
+    # 3. Install the rest of the stack
+    # We pin transformers to a version known to work well with Florence-2
+    .pip_install(
+        "transformers==4.41.2", "pillow", "einops", "timm", "packaging", "ninja"
     )
     .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
+    # 4. Download Model
     .run_commands(
-        # Bake the model into the image
         "python -c 'from transformers import AutoModelForCausalLM, AutoProcessor; "
         'model_id="microsoft/Florence-2-large"; '
         "AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True); "
@@ -54,13 +63,15 @@ app = modal.App("ingestion-worker")
 @app.cls(
     gpu="L4",  # 24GB VRAM
     image=pdf_parser_image,
-    concurrency_limit=6,  # Total Pool: Max 6 GPUs allowed
-    allow_concurrent_inputs=4,  # Density: 4 requests running per GPU
+    max_containers=6,  # Total Pool: Max 6 GPUs allowed
     cpu=8.0,  # Feeder: 2 vCPUs per worker to prevent bottlenecks
-    container_idle_timeout=60,  # Keep warm for 60s
+    scaledown_window=60,  # Keep warm for 60s
+    retries=3,
 )
+@modal.concurrent(max_inputs=4)  # Density: 4 requests running per GPU
 class MarkerParser:
-    def __enter__(self):
+    @modal.enter()
+    def setup(self):
         """
         Runs ONCE when the container starts.
         Loads the huge models into GPU memory so they are ready for all 4 workers.
@@ -73,13 +84,14 @@ class MarkerParser:
             artifact_dict=create_model_dict(),
         )
 
-    @modal.method(retries=3)
+    @modal.method()
     def parse_secure_pdf(
         self, pdf_data: bytes
     ) -> tuple[str, dict[str, bytes], list[str]]:
         """
         Runs for every request.
         """
+        import os
         import re
         import tempfile
         import uuid
@@ -91,13 +103,14 @@ class MarkerParser:
         # If 4 workers save to "/root/doc.pdf" at the same time, they will corrupt data.
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as temp_pdf:
             temp_pdf.write(pdf_data)
-            temp_pdf.flush()
+            temp_pdf.flush()  # Flush Python buffer
+            os.fsync(temp_pdf.file.fileno())  # Force OS to write to disk
 
             print(f"Processing size: {len(pdf_data)/1024:.1f} KB")
 
             # 2. Run Inference
             # batch_multiplier=1 ensures we don't hog VRAM, leaving room for other workers
-            rendered = self.converter(temp_pdf.name, batch_multiplier=1)
+            rendered = self.converter(temp_pdf.name)
 
             # 3. Extract Output
             text, _, images = text_from_rendered(rendered)
@@ -143,13 +156,15 @@ class MarkerParser:
 @app.cls(
     gpu="L4",
     image=florence_image,
-    concurrency_limit=1,
-    allow_concurrent_inputs=12,
-    cpu=6,
-    container_idle_timeout=60,
+    max_containers=1,
+    retries=3,
+    cpu=4,
+    scaledown_window=60,
 )
+@modal.concurrent(max_inputs=8)  # 8 concurrent requests per container
 class FlorenceSummarizer:
-    def __enter__(self):
+    @modal.enter()
+    def setup(self):
         import torch  # type: ignore
         from transformers import AutoModelForCausalLM, AutoProcessor  # type: ignore
 
@@ -165,7 +180,7 @@ class FlorenceSummarizer:
 
         self.processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
 
-    @modal.method(retries=3)
+    @modal.method()
     def summarize_image(self, image_bytes: bytes) -> str:
         import io
 
