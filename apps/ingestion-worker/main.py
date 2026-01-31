@@ -20,8 +20,9 @@ from utils.db_client import close_db, get_db, init_db
 
 
 async def main():
-    # Load environment variables from .env in the same folder as this file
-    env_path = Path(__file__).parent / ".env"
+    # Load environment variables from root .env file (2 levels up from ingestion-worker)
+    root_dir = Path(__file__).parent.parent.parent
+    env_path = root_dir / ".env"
     load_dotenv(dotenv_path=env_path)
 
     # Get Redis client (initializes if needed)
