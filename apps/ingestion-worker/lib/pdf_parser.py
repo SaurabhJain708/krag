@@ -23,9 +23,10 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
 
         # 2. Connect to GPU
         update_source_status(source_id, FileProcessingStatus.extracting.value)
-        results = list[tuple[str, dict[str, bytes]]](
-            remote_parser.parse_secure_pdf.map(split_pdf_chunks)
-        )
+        results = [
+            result
+            async for result in remote_parser.parse_secure_pdf.map.aio(split_pdf_chunks)
+        ]
     except Exception:
         update_source_status(source_id, FileProcessingStatus.failed.value)
         raise
@@ -39,9 +40,12 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
     if image_bytes_list:
         try:
             update_source_status(source_id, FileProcessingStatus.images.value)
-            summary_results = list(
-                remote_summarizer.summarize_image.map(image_bytes_list)
-            )
+            summary_results = [
+                result
+                async for result in remote_summarizer.summarize_image.map.aio(
+                    image_bytes_list
+                )
+            ]
 
             # Zip IDs back with their summaries so you know which is which
             image_summaries = dict(zip(image_uuids, summary_results, strict=True))
@@ -83,12 +87,22 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
                 }
             )
 
+        # Convert extracted_images dict to list of image objects for save_to_db
+        formatted_images = [
+            {
+                "id": img_id,
+                "bytes": img_bytes,
+                "path": f"{user_id}/{img_id}.png",  # Path for storage
+            }
+            for img_id, img_bytes in extracted_images.items()
+        ]
+
         await save_to_db(
             formatted_child_chunks,
             parent_chunks,
             source_id,
             db_chunks,
-            extracted_images,
+            formatted_images,
             user_id,
         )
 

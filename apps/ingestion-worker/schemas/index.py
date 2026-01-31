@@ -36,7 +36,6 @@ class FileProcessingStatus(str, Enum):
     queued = "queued"
     processing = "processing"
     starting = "starting"
-    vision = "vision"
     extracting = "extracting"
     images = "images"
     chunking = "chunking"

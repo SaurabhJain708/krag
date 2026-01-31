@@ -53,14 +53,20 @@ async def save_to_db(
     db = get_db()
 
     upload_tasks = []
+    image_paths = []
     for img in images:
         img_id = getattr(img, "id", None) or img.get("id")
         img_bytes = (
             getattr(img, "bytes", None) or img.get("bytes") or img.get("content")
         )
+        img_path = getattr(img, "path", None) or img.get("path")
 
         if img_id and img_bytes:
             upload_tasks.append(upload_single_image(user_id, img_id, img_bytes))
+            # Construct path if not provided
+            if not img_path:
+                img_path = f"{user_id}/{img_id}.png"
+            image_paths.append(img_path)
 
     if upload_tasks:
         print(
@@ -74,7 +80,7 @@ async def save_to_db(
         data={
             "processingStatus": FileProcessingStatus.completed,
             "content": split_content,
-            "image_paths": [img.path for img in images],
+            "image_paths": image_paths,
         },
     )
     await db.parent_chunk.create_many(

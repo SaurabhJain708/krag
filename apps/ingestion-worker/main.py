@@ -61,7 +61,9 @@ async def main():
                         f"🚀 Starting PDF processing for file {file_id}...", flush=True
                     )
 
-                    parse_pdf(message["base64"], message["id"], message["user_id"])
+                    await parse_pdf(
+                        message["base64"], message["id"], message["user_id"]
+                    )
 
                     print(f"✅ Successfully processed file {file_id}", flush=True)
                 except json.JSONDecodeError as e:

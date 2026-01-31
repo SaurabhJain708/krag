@@ -7,6 +7,7 @@
 generator client {
   provider        = "prisma-client-js"
   output          = "./../generated/client"
+  previewFeatures = ["driverAdapters"]
 }
 
 generator client_py {
@@ -31,7 +32,6 @@ enum FileProcessingStatus {
   queued
   processing
   starting
-  vision
   extracting
   images
   chunking
