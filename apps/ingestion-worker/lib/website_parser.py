@@ -16,7 +16,12 @@ async def parse_website(website_url: str, user_id: str, source_id: str) -> str:
     try:
         update_source_status(source_id, FileProcessingStatus.extracting.value)
 
-        extracted_text = exa.extract([website_url], text=True)
+        # Use get_contents with URLs to extract text directly
+        # Exa API: get_contents accepts urls parameter for direct URL fetching
+        result = exa.get_contents(urls=[website_url], text={"max_characters": 100000})
+        if not result.results or len(result.results) == 0:
+            raise ValueError(f"No content extracted from URL: {website_url}")
+        extracted_text = result.results[0].text or ""
 
         update_source_status(source_id, FileProcessingStatus.chunking.value)
         db_chunks, parent_chunks, child_chunks = process_chunks(extracted_text)

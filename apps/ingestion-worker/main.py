@@ -67,7 +67,7 @@ async def main():
                         )
                     elif message["type"] == "url":
                         await parse_website(
-                            message["url"], message["id"], message["user_id"]
+                            message["url"], message["user_id"], message["id"]
                         )
 
                     print(f"✅ Successfully processed file {file_id}", flush=True)

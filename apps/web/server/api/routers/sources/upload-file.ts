@@ -9,8 +9,8 @@ import { redis } from "@/lib/redis";
 export const uploadFile = protectedProcedure
   .input(
     z.object({
-      fileBase64: z.string(),
-      fileName: z.string(),
+      fileBase64: z.string().optional(),
+      fileName: z.string().optional(),
       notebookId: z.string(),
       websiteUrl: z.string().optional(),
     })
@@ -27,7 +27,7 @@ export const uploadFile = protectedProcedure
     if (!notebook) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Notebook not found" });
     }
-    const buffer = Buffer.from(fileBase64, "base64");
+    const buffer = Buffer.from(fileBase64 || "", "base64");
     const data = await uploadFileToStorage({
       buffer,
       mimeType: "application/pdf",
@@ -49,10 +49,11 @@ export const uploadFile = protectedProcedure
       "file_processing_queue",
       JSON.stringify({
         id: data.id,
-        mimeType: "application/pdf",
-        base64: fileBase64,
+        mimeType: websiteUrl ? "text/html" : "application/pdf",
+        base64: fileBase64 || "",
         user_id: userId,
-        website_url: websiteUrl,
+        url: websiteUrl,
+        type: websiteUrl ? "url" : "pdf",
       })
     );
 
@@ -63,7 +64,7 @@ export const uploadFile = protectedProcedure
         id: data.id,
         userId,
         notebookId,
-        name: websiteUrl ? websiteUrl : fileName,
+        name: websiteUrl ? websiteUrl : fileName || "",
         type: websiteUrl ? FileType.url : FileType.pdf,
         path: data.path,
         processingStatus: FileProcessingStatus.queued,

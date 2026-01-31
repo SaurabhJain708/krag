@@ -95,18 +95,42 @@ async def save_to_db(
             {
                 "id": parent_chunk["id"],
                 "content": parent_chunk["content"],
-                "source_id": source_id,
+                "sourceId": source_id,
             }
             for parent_chunk in parent_chunks
         ]
     )
-    await db.documentchunk.create_many(
-        data=[
-            {
-                "content": child_chunk["content"],
-                "parent_ids": child_chunk["parent_ids"],
-                "embeddings": child_chunk["embeddings"],
-            }
-            for child_chunk in child_chunks
-        ]
-    )
+    if child_chunks:
+        import json
+        from uuid import uuid4
+
+        # Use raw SQL since Prisma client doesn't have DocumentChunk mutations
+        insert_query = """
+            INSERT INTO "DocumentChunk" (id, content, "parentIds", embedding, "sourceId")
+            VALUES ($1, $2, $3::text[], $4::vector(1024), $5)
+        """
+
+        for child_chunk in child_chunks:
+            chunk_id = str(uuid4())
+            content = child_chunk["content"]
+            parent_ids = child_chunk[
+                "parent_ids"
+            ]  # Flat list[str] from extract_parent_ids
+            embeddings = child_chunk["embeddings"]
+
+            # Format embedding as string for pgvector: '[1.0, 2.0, 3.0]'
+            embedding_str = str(embeddings)
+
+            # Format parent_ids as PostgreSQL text[] array literal: '{"id1", "id2"}'
+            parent_ids_literal = (
+                json.dumps(parent_ids).replace("[", "{").replace("]", "}")
+            )
+
+            await db.execute_raw(
+                insert_query,
+                chunk_id,
+                content,
+                parent_ids_literal,
+                embedding_str,
+                source_id,
+            )

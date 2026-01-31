@@ -10,7 +10,7 @@ class Parent_Chunks(TypedDict):
 
 class Child_Chunks(TypedDict):
     content: str
-    parent_ids: list[int]
+    parent_ids: list[str]  # Parent chunk UUIDs
     embeddings: list[float] | None = None
     id: str
 

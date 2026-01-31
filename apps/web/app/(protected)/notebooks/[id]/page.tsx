@@ -16,6 +16,7 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,8 @@ import { signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/server/trpc/react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function NotebookDetailPage({
   params,
@@ -48,6 +51,8 @@ export default function NotebookDetailPage({
   const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
+  const [websiteUrl, setWebsiteUrl] = useState("");
 
   const { data: sources = [], isLoading: isLoadingSources } =
     trpc.sourcesRouter.getSources.useQuery({
@@ -177,6 +182,46 @@ export default function NotebookDetailPage({
     e.preventDefault();
     setIsDragging(false);
     handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleUrlSubmit = async () => {
+    if (!websiteUrl.trim()) {
+      toast.error("Please enter a valid URL", {
+        id: "upload-url",
+      });
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(websiteUrl);
+    } catch {
+      toast.error("Please enter a valid URL", {
+        id: "upload-url",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    toast.loading("Uploading website...", { id: "upload-url" });
+
+    try {
+      // Send empty base64 for URL uploads (backend will use websiteUrl instead)
+      await uploadFile.mutateAsync({
+        fileBase64: "",
+        fileName: websiteUrl,
+        notebookId,
+        websiteUrl: websiteUrl.trim(),
+      });
+      setIsAddSourceDialogOpen(false);
+      setWebsiteUrl("");
+      setUploadMode("file");
+    } catch (error) {
+      // Error is handled by onError callback
+      console.error("Upload error:", error);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const router = useRouter();
@@ -454,77 +499,162 @@ export default function NotebookDetailPage({
       {/* Add Source Dialog */}
       <Dialog
         open={isAddSourceDialogOpen}
-        onOpenChange={setIsAddSourceDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddSourceDialogOpen(open);
+          if (!open) {
+            setWebsiteUrl("");
+            setUploadMode("file");
+          }
+        }}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-left text-xl">
-              Upload files
-            </DialogTitle>
+            <DialogTitle className="text-left text-xl">Add source</DialogTitle>
           </DialogHeader>
 
           <div className="mt-4 space-y-6">
-            {/* File Upload Area */}
-            <div className="space-y-4">
-              <div
+            {/* Mode Toggle */}
+            <div className="border-border/60 flex gap-2 border-b">
+              <button
+                type="button"
+                onClick={() => setUploadMode("file")}
                 className={cn(
-                  "rounded-lg border-2 border-dashed p-12 text-center transition-colors",
-                  isDragging
-                    ? "border-primary bg-primary/5"
-                    : "border-border/60 hover:border-border",
-                  isUploading
-                    ? "cursor-not-allowed opacity-50"
-                    : "cursor-pointer"
+                  "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                  uploadMode === "file"
+                    ? "border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
                 )}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => {
-                  if (!isUploading) {
-                    const input = document.getElementById("file-upload-input");
-                    input?.click();
-                  }
-                }}
+                disabled={isUploading}
               >
-                <input
-                  id="file-upload-input"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleFileSelect(e.target.files)}
-                  disabled={isUploading}
-                />
-                <div className="flex flex-col items-center gap-4">
-                  <div className="bg-muted/50 flex h-16 w-16 items-center justify-center rounded-full">
-                    <Upload className="text-muted-foreground h-8 w-8" />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-foreground text-sm font-medium">
-                      Drop your files here or click to browse
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      Supports PDFs, documents, images, and more
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="mt-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!isUploading) {
-                        const input =
-                          document.getElementById("file-upload-input");
-                        input?.click();
-                      }
-                    }}
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Upload File
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadMode("url")}
+                className={cn(
+                  "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                  uploadMode === "url"
+                    ? "border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
+                )}
+                disabled={isUploading}
+              >
+                <div className="flex items-center gap-2">
+                  <Link className="h-4 w-4" />
+                  Website URL
+                </div>
+              </button>
+            </div>
+
+            {/* File Upload Area */}
+            {uploadMode === "file" && (
+              <div className="space-y-4">
+                <div
+                  className={cn(
+                    "rounded-lg border-2 border-dashed p-12 text-center transition-colors",
+                    isDragging
+                      ? "border-primary bg-primary/5"
+                      : "border-border/60 hover:border-border",
+                    isUploading
+                      ? "cursor-not-allowed opacity-50"
+                      : "cursor-pointer"
+                  )}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => {
+                    if (!isUploading) {
+                      const input =
+                        document.getElementById("file-upload-input");
+                      input?.click();
+                    }
+                  }}
+                >
+                  <input
+                    id="file-upload-input"
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e.target.files)}
                     disabled={isUploading}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isUploading ? "Uploading..." : "Select files"}
-                  </Button>
+                  />
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="bg-muted/50 flex h-16 w-16 items-center justify-center rounded-full">
+                      <Upload className="text-muted-foreground h-8 w-8" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-foreground text-sm font-medium">
+                        Drop your files here or click to browse
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        Supports PDFs, documents, images, and more
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="mt-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isUploading) {
+                          const input =
+                            document.getElementById("file-upload-input");
+                          input?.click();
+                        }
+                      }}
+                      disabled={isUploading}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {isUploading ? "Uploading..." : "Select files"}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* URL Upload Area */}
+            {uploadMode === "url" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="website-url">Website URL</Label>
+                  <Input
+                    id="website-url"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    disabled={isUploading}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isUploading) {
+                        handleUrlSubmit();
+                      }
+                    }}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Enter a valid website URL to extract and process its content
+                  </p>
+                </div>
+                <Button
+                  onClick={handleUrlSubmit}
+                  disabled={isUploading || !websiteUrl.trim()}
+                  className="w-full"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Link className="mr-2 h-4 w-4" />
+                      Add Website
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
