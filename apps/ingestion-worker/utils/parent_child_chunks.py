@@ -1,7 +1,7 @@
 import re
 from uuid import uuid4
 
-from schemas.index import Child_Chunks, Chunk, Finalised_chunk, Parent_Chunks
+from schemas.index import Child_Chunks, Chunk, Parent_Chunks, SplitContent
 from utils.chunk_splitter import split_mixed_content
 from utils.tools import extract_child_ids, extract_parent_ids
 
@@ -9,7 +9,7 @@ from utils.tools import extract_child_ids, extract_parent_ids
 def create_parent_child_chunks(
     chunks: list[Chunk],
 ) -> list[Parent_Chunks, Child_Chunks]:
-    combined_text_with_ids: list[Finalised_chunk] = []
+    combined_text_with_ids: list[SplitContent] = []
 
     temp_text = ""
 

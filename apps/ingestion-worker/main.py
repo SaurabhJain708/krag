@@ -1,3 +1,4 @@
+import asyncio
 import json
 import sys
 import traceback
@@ -14,15 +15,20 @@ from lib.redis_client import (
 )
 from modal_service import app
 from schemas.index import FileProcessingStatus
+from utils.db_client import close_db, get_db, init_db
 
 
-def main():
+async def main():
     # Load environment variables from .env in the same folder as this file
     env_path = Path(__file__).parent / ".env"
     load_dotenv(dotenv_path=env_path)
 
     # Get Redis client (initializes if needed)
     redis_client = get_redis_client()
+    await init_db()
+
+    # Get the client instance
+    get_db()
 
     queue_name = "file_processing_queue"
     print(f"🐍 Python Worker connected. Listening on '{queue_name}'...", flush=True)
@@ -77,10 +83,10 @@ def main():
         sys.stdout.flush()
         raise
     finally:
-        # Cleanup Redis connection
-        close_redis_client()
+        await close_db()
+        await close_redis_client()
 
 
 if __name__ == "__main__":
     with app.run():
-        main()
+        asyncio.run(main())

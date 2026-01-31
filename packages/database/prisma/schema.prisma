@@ -19,7 +19,7 @@ generator client_py {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  extensions = [vector]
+  extensions = [vector,pg_trgm]
 }
 
 enum MessageRole {
@@ -162,6 +162,7 @@ model Source {
   notebookId       String
   notebook         Notebook             @relation(fields: [notebookId], references: [id], onDelete: Cascade)
   type             FileType             @default(pdf)
+  image_paths      String[]
   documentChunks   DocumentChunk[]
   parentChunks     ParentChunk[]
 
@@ -173,7 +174,6 @@ model DocumentChunk {
   id      String @id @default(uuid())
   content String
 
-  page       Int?
   chunkIndex Int
 
   embedding Unsupported("vector(1536)")
@@ -182,10 +182,8 @@ model DocumentChunk {
   source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   parentIds String[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
   @@index([sourceId])
+  @@index([content(ops: raw("gin_trgm_ops"))], type: Gin, name: "content_gin_idx")
 }
 
 model ParentChunk {

@@ -11,6 +11,7 @@ class Parent_Chunks(TypedDict):
 class Child_Chunks(TypedDict):
     content: str
     parent_ids: list[int]
+    embeddings: list[float] | None = None
     id: str
 
 
@@ -25,9 +26,9 @@ class SplitContent(TypedDict):
     content: str
 
 
-class Finalised_chunk(TypedDict):
-    type: Literal["text", "table"]
-    content: str
+class images(TypedDict):
+    image_id: str
+    image_bytes: bytes
 
 
 class FileProcessingStatus(str, Enum):
