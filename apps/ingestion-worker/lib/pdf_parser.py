@@ -108,7 +108,7 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
 
         update_source_status(source_id, FileProcessingStatus.completed.value)
 
-        return extracted_text, extracted_images
+        return
     except Exception:
         update_source_status(source_id, FileProcessingStatus.failed.value)
         raise

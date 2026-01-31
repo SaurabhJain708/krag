@@ -12,10 +12,11 @@ export const uploadFile = protectedProcedure
       fileBase64: z.string(),
       fileName: z.string(),
       notebookId: z.string(),
+      websiteUrl: z.string().optional(),
     })
   )
   .mutation(async ({ ctx, input }) => {
-    const { fileBase64, fileName, notebookId } = input;
+    const { fileBase64, fileName, notebookId, websiteUrl } = input;
     const userId = ctx.session.user.id;
     const notebook = await ctx.db.notebook.findUnique({
       where: {
@@ -51,6 +52,7 @@ export const uploadFile = protectedProcedure
         mimeType: "application/pdf",
         base64: fileBase64,
         user_id: userId,
+        website_url: websiteUrl,
       })
     );
 
@@ -61,8 +63,8 @@ export const uploadFile = protectedProcedure
         id: data.id,
         userId,
         notebookId,
-        name: fileName,
-        type: FileType.pdf,
+        name: websiteUrl ? websiteUrl : fileName,
+        type: websiteUrl ? FileType.url : FileType.pdf,
         path: data.path,
         processingStatus: FileProcessingStatus.queued,
       },

@@ -13,6 +13,7 @@ from lib.redis_client import (
     reset_redis_client,
     update_source_status,
 )
+from lib.website_parser import parse_website
 from modal_service import app
 from schemas.index import FileProcessingStatus
 from utils.db_client import close_db, get_db, init_db
@@ -60,10 +61,14 @@ async def main():
                     print(
                         f"🚀 Starting PDF processing for file {file_id}...", flush=True
                     )
-
-                    await parse_pdf(
-                        message["base64"], message["id"], message["user_id"]
-                    )
+                    if message["type"] == "pdf":
+                        await parse_pdf(
+                            message["base64"], message["id"], message["user_id"]
+                        )
+                    elif message["type"] == "url":
+                        await parse_website(
+                            message["url"], message["id"], message["user_id"]
+                        )
 
                     print(f"✅ Successfully processed file {file_id}", flush=True)
                 except json.JSONDecodeError as e:
