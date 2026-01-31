@@ -63,9 +63,6 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
 
         # Extract text content from child chunks for embedding
         child_texts = [chunk["content"] for chunk in child_chunks]
-        child_text_with_parent_ids = [
-            (chunk["content"], chunk["parent_ids"]) for chunk in child_chunks
-        ]
         print(
             f"🔢 Generating embeddings for {len(child_texts)} child chunks...",
             flush=True,
@@ -74,12 +71,20 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
         # Use .spawn() for async execution, then .get() to get the result
         result_handle = remote_embedder.generate_embeddings.spawn(child_texts)
         embeddings = result_handle.get()
-        embeddings_with_text_and_parent_ids = list(
-            zip(child_text_with_parent_ids, embeddings, strict=True)
-        )
+
+        # Format child chunks for database
+        formatted_child_chunks = []
+        for i, chunk in enumerate(child_chunks):
+            formatted_child_chunks.append(
+                {
+                    "content": chunk["content"],
+                    "parent_ids": chunk["parent_ids"],
+                    "embeddings": embeddings[i],  # Assign the matching embedding
+                }
+            )
 
         await save_to_db(
-            embeddings_with_text_and_parent_ids,
+            formatted_child_chunks,
             parent_chunks,
             source_id,
             db_chunks,

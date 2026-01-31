@@ -174,9 +174,7 @@ model DocumentChunk {
   id      String @id @default(uuid())
   content String
 
-  chunkIndex Int
-
-  embedding Unsupported("vector(1536)")
+  embedding Unsupported("vector(1024)")
 
   sourceId  String
   source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
