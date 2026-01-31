@@ -9,4 +9,5 @@ dependencies = [
     "markdown-it-py>=4.0.0",
     "prisma>=0.15.0",
     "pypdf>=6.6.2",
+    "supabase>=2.27.2",
 ]
