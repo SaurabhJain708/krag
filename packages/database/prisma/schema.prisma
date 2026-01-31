@@ -7,7 +7,6 @@
 generator client {
   provider        = "prisma-client-js"
   output          = "./../generated/client"
-  previewFeatures = ["postgresqlExtensions"]
 }
 
 generator client_py {
@@ -17,9 +16,9 @@ generator client_py {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  extensions = [vector,pg_trgm]
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
 }
 
 enum MessageRole {

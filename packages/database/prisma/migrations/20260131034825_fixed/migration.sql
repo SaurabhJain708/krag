@@ -4,8 +4,8 @@
   - You are about to drop the `file` table. If the table is not empty, all the data it contains will be lost.
 
 */
--- CreateExtension
-CREATE EXTENSION IF NOT EXISTS "vector";
+-- CreateEnum
+CREATE TYPE "FileType" AS ENUM ('pdf', 'url');
 
 -- DropForeignKey
 ALTER TABLE "file" DROP CONSTRAINT "file_notebookId_fkey";
@@ -28,6 +28,7 @@ CREATE TABLE "Source" (
     "processingStatus" "FileProcessingStatus" NOT NULL DEFAULT 'uploading',
     "notebookId" TEXT NOT NULL,
     "type" "FileType" NOT NULL DEFAULT 'pdf',
+    "image_paths" TEXT[],
 
     CONSTRAINT "Source_pkey" PRIMARY KEY ("id")
 );
@@ -36,13 +37,9 @@ CREATE TABLE "Source" (
 CREATE TABLE "DocumentChunk" (
     "id" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "page" INTEGER,
-    "chunkIndex" INTEGER NOT NULL,
-    "embedding" vector(1536) NOT NULL,
+    "embedding" vector(1024) NOT NULL,
     "sourceId" TEXT NOT NULL,
     "parentIds" TEXT[],
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "DocumentChunk_pkey" PRIMARY KEY ("id")
 );
@@ -64,6 +61,9 @@ CREATE INDEX "Source_notebookId_idx" ON "Source"("notebookId");
 
 -- CreateIndex
 CREATE INDEX "DocumentChunk_sourceId_idx" ON "DocumentChunk"("sourceId");
+
+-- CreateIndex
+CREATE INDEX "content_gin_idx" ON "DocumentChunk" USING GIN ("content" gin_trgm_ops);
 
 -- CreateIndex
 CREATE INDEX "ParentChunk_sourceId_idx" ON "ParentChunk"("sourceId");
