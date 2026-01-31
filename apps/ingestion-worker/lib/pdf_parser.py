@@ -87,12 +87,12 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
                 }
             )
 
-        # Convert extracted_images dict to list of image objects for save_to_db
+        # Convert extracted_images dict to list matching the images TypedDict schema
+        # Schema expects: image_id (str), image_bytes (bytes)
         formatted_images = [
             {
-                "id": img_id,
-                "bytes": img_bytes,
-                "path": f"{user_id}/{img_id}.png",  # Path for storage
+                "image_id": img_id,
+                "image_bytes": img_bytes,
             }
             for img_id, img_bytes in extracted_images.items()
         ]

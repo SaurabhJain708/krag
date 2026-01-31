@@ -1,7 +1,7 @@
 import asyncio
-import io
 import os
 
+from generated.db import fields
 from schemas.index import (
     Child_Chunks,
     Chunk,
@@ -25,14 +25,13 @@ async def upload_single_image(user_id: str, img_id: str, img_bytes: bytes):
     storage_path = f"{user_id}/{img_id}.png"
 
     try:
-        file_object = io.BytesIO(img_bytes)
-
+        # Supabase Python client accepts bytes directly (not BytesIO)
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
             lambda: supabase.storage.from_(BUCKET_NAME).upload(
                 path=storage_path,
-                file=file_object,
+                file=img_bytes,  # Pass bytes directly
                 file_options={"content-type": "image/png", "x-upsert": "true"},
             ),
         )
@@ -55,17 +54,18 @@ async def save_to_db(
     upload_tasks = []
     image_paths = []
     for img in images:
-        img_id = getattr(img, "id", None) or img.get("id")
+        # Match the images TypedDict schema: image_id, image_bytes
+        img_id = getattr(img, "image_id", None) or img.get("image_id")
         img_bytes = (
-            getattr(img, "bytes", None) or img.get("bytes") or img.get("content")
+            getattr(img, "image_bytes", None)
+            or img.get("image_bytes")
+            or img.get("bytes")  # fallback for backwards compatibility
         )
-        img_path = getattr(img, "path", None) or img.get("path")
 
         if img_id and img_bytes:
             upload_tasks.append(upload_single_image(user_id, img_id, img_bytes))
-            # Construct path if not provided
-            if not img_path:
-                img_path = f"{user_id}/{img_id}.png"
+            # Construct storage path
+            img_path = f"{user_id}/{img_id}.png"
             image_paths.append(img_path)
 
     if upload_tasks:
@@ -75,15 +75,22 @@ async def save_to_db(
         )
         await asyncio.gather(*upload_tasks)
 
+    if split_content:
+        content_list = [dict(item) for item in split_content]
+        content_data = fields.Json(content_list)
+    else:
+        # For nullable Json fields, pass None explicitly
+        content_data = None
+
     await db.source.update(
         where={"id": source_id},
         data={
             "processingStatus": FileProcessingStatus.completed,
-            "content": split_content,
+            "content": content_data,
             "image_paths": image_paths,
         },
     )
-    await db.parent_chunk.create_many(
+    await db.parentchunk.create_many(
         data=[
             {
                 "id": parent_chunk["id"],
