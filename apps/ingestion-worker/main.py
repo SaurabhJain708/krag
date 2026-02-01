@@ -4,26 +4,28 @@ import sys
 import traceback
 from pathlib import Path
 
-import redis
 from dotenv import load_dotenv
-from lib.pdf_parser import parse_pdf
-from lib.redis_client import (
+
+# Load environment variables before other imports that may depend on them
+root_dir = Path(__file__).parent.parent.parent
+env_path = root_dir / ".env"
+load_dotenv(dotenv_path=env_path)
+
+import redis  # noqa: E402
+from lib.pdf_parser import parse_pdf  # noqa: E402
+from lib.redis_client import (  # noqa: E402
     close_redis_client,
     get_redis_client,
     reset_redis_client,
     update_source_status,
 )
-from lib.website_parser import parse_website
-from modal_service import app
-from schemas.index import FileProcessingStatus
-from utils.db_client import close_db, get_db, init_db
+from lib.website_parser import parse_website  # noqa: E402
+from modal_service import app  # noqa: E402
+from schemas.index import FileProcessingStatus  # noqa: E402
+from utils.db_client import close_db, get_db, init_db  # noqa: E402
 
 
 async def main():
-    # Load environment variables from root .env file (2 levels up from ingestion-worker)
-    root_dir = Path(__file__).parent.parent.parent
-    env_path = root_dir / ".env"
-    load_dotenv(dotenv_path=env_path)
 
     # Get Redis client (initializes if needed)
     redis_client = get_redis_client()

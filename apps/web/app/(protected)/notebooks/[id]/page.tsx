@@ -19,6 +19,8 @@ import {
   Link,
   AlertCircle,
   Home,
+  Send,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +44,7 @@ import { trpc } from "@/server/trpc/react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // Utility functions
 const fileToBase64 = (file: File): Promise<string> => {
@@ -256,14 +259,18 @@ function ErrorState() {
 function SourceItem({
   source,
   statusInfo,
+  onDelete,
+  isDeleting,
 }: {
   source: { id: string; name: string; type: string };
   statusInfo: ReturnType<typeof getProcessingStatusInfo>;
+  onDelete: () => void;
+  isDeleting?: boolean;
 }) {
   const isActive = statusInfo.isProcessing || statusInfo.isUploading;
 
   return (
-    <div className="bg-background border-border/60 hover:bg-muted/50 relative flex cursor-pointer items-center gap-3 overflow-hidden rounded-lg border p-3 transition-colors">
+    <div className="bg-background border-border/60 hover:bg-muted/50 group relative flex cursor-pointer items-center gap-3 overflow-hidden rounded-lg border p-3 transition-colors">
       {/* Animated gradient bar */}
       {isActive && (
         <div className="absolute right-0 bottom-0 left-0 h-0.5 overflow-hidden rounded-b-lg">
@@ -310,6 +317,23 @@ function SourceItem({
           </p>
         </div>
       </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        disabled={isDeleting || isActive}
+        title="Delete source"
+      >
+        {isDeleting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <XCircle className="h-4 w-4" />
+        )}
+      </Button>
     </div>
   );
 }
@@ -323,6 +347,8 @@ function SourcesPane({
   onToggleCollapse,
   onAddSource,
   isUploading,
+  onDeleteSource,
+  deletingSourceIds,
 }: {
   sources: Array<{
     id: string;
@@ -336,6 +362,8 @@ function SourcesPane({
   onToggleCollapse: () => void;
   onAddSource: () => void;
   isUploading: boolean;
+  onDeleteSource: (sourceId: string) => void;
+  deletingSourceIds: Set<string>;
 }) {
   return (
     <div
@@ -393,6 +421,8 @@ function SourcesPane({
                   key={source.id}
                   source={source}
                   statusInfo={statusInfo}
+                  onDelete={() => onDeleteSource(source.id)}
+                  isDeleting={deletingSourceIds.has(source.id)}
                 />
               );
             })}
@@ -416,6 +446,14 @@ function SourcesPane({
   );
 }
 
+// Message type
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+};
+
 // Chat Pane Component
 function ChatPane({
   sourcesCollapsed,
@@ -428,6 +466,45 @@ function ChatPane({
   onAddSource: () => void;
   sourceCount: number;
 }) {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const hasSources = sourceCount > 0;
+
+  const handleSend = async () => {
+    if (!message.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: message.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setMessage("");
+    setIsLoading(true);
+
+    // Simulate AI response delay
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Based on your sources, here's a comprehensive answer to your question: "${userMessage.content}". This is a dummy response that demonstrates how the AI chat interface will work. The actual implementation will connect to your AI backend to provide real answers based on the content from your uploaded sources.`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiResponse]);
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
     <div className="bg-card border-border/40 relative flex flex-1 flex-col overflow-hidden rounded-lg border shadow-sm">
       <button
@@ -443,41 +520,163 @@ function ChatPane({
         <ChevronRight className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
       </button>
 
-      <div className="flex h-14 items-center justify-between px-5">
+      <div className="border-border/50 bg-background/50 flex h-14 items-center justify-between border-b px-5">
         <span className="text-foreground text-sm font-semibold">Chat</span>
+        {hasSources && (
+          <span className="text-muted-foreground text-xs">
+            {sourceCount} {sourceCount === 1 ? "source" : "sources"}
+          </span>
+        )}
       </div>
 
-      <div className="relative flex flex-1 flex-col items-center justify-center gap-4 overflow-y-auto p-8">
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
-          <ChevronDown className="text-muted-foreground/40 h-5 w-5" />
-        </div>
-
-        <div className="flex flex-col items-center gap-4 text-center">
-          <ChevronUp className="text-muted-foreground/40 h-12 w-12" />
-          <p className="text-foreground text-sm font-medium">
-            Add a source to get started
-          </p>
-          <Button
-            className="bg-background text-foreground border-border/60 hover:bg-muted/60 cursor-pointer rounded-md border shadow-sm"
-            onClick={onAddSource}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Upload a source
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-card px-5 pt-0 pb-5">
-        <div className="border-border/60 bg-background/50 flex items-center gap-2 rounded-lg border px-4 py-3 shadow-sm transition-all hover:shadow-md">
-          <div className="text-muted-foreground flex-1 text-sm">
-            Upload a source to get started
+      {hasSources ? (
+        <>
+          {/* Messages Area */}
+          <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
+            {messages.length === 0 ? (
+              <div className="flex flex-1 items-center justify-center py-12">
+                <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+                  <div className="bg-primary/10 ring-primary/20 flex h-14 w-14 items-center justify-center rounded-full ring-1">
+                    <FileText className="text-primary h-7 w-7" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-foreground text-sm font-medium">
+                      Start a conversation
+                    </p>
+                    <p className="text-muted-foreground px-4 text-xs leading-relaxed">
+                      Ask questions about your sources and get AI-powered
+                      answers
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "flex gap-3",
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    {msg.role === "assistant" && (
+                      <div className="bg-primary/10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                        <Bot className="text-primary h-4 w-4" />
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "max-w-[80%] rounded-lg px-4 py-2.5 text-sm leading-relaxed",
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground border-border/50 border"
+                      )}
+                    >
+                      <p className="wrap-break-word whitespace-pre-wrap">
+                        {msg.content}
+                      </p>
+                    </div>
+                    {msg.role === "user" && (
+                      <div className="bg-muted mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                        <User className="text-muted-foreground h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start gap-3">
+                    <div className="bg-primary/10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                      <Bot className="text-primary h-4 w-4" />
+                    </div>
+                    <div className="bg-muted border-border/50 rounded-lg border px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
+                        <span className="text-muted-foreground text-sm">
+                          Thinking...
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          <div className="bg-muted/50 text-muted-foreground flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium">
-            <span>{sourceCount} sources</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+
+          {/* Chat Input */}
+          <div className="bg-background/95 border-border/50 border-t px-4 py-3 backdrop-blur-sm">
+            <div className="flex items-end gap-2.5">
+              <div className="relative flex-1">
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask a question about your sources..."
+                  className="border-border/60 focus-visible:border-primary/50 max-h-[120px] min-h-[44px] resize-none py-2.5 pr-12 text-sm leading-relaxed"
+                  rows={1}
+                />
+              </div>
+              <Button
+                onClick={handleSend}
+                disabled={!message.trim() || isLoading}
+                size="icon"
+                className="h-[44px] w-[44px] shrink-0 rounded-lg transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-muted-foreground/70 mt-2.5 flex items-center gap-1.5 text-[10px] leading-tight">
+              <span>Press</span>
+              <kbd className="bg-muted/80 border-border/50 rounded border px-1.5 py-0.5 font-mono text-[10px] shadow-sm">
+                Enter
+              </kbd>
+              <span>to send,</span>
+              <kbd className="bg-muted/80 border-border/50 rounded border px-1.5 py-0.5 font-mono text-[10px] shadow-sm">
+                Shift+Enter
+              </kbd>
+              <span>for new line</span>
+            </p>
           </div>
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="relative flex flex-1 flex-col items-center justify-center gap-4 overflow-y-auto p-8">
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
+              <ChevronDown className="text-muted-foreground/40 h-5 w-5" />
+            </div>
+
+            <div className="flex flex-col items-center gap-4 text-center">
+              <ChevronUp className="text-muted-foreground/40 h-12 w-12" />
+              <p className="text-foreground text-sm font-medium">
+                Add a source to get started
+              </p>
+              <Button
+                className="bg-background text-foreground border-border/60 hover:bg-muted/60 cursor-pointer rounded-md border shadow-sm"
+                onClick={onAddSource}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload a source
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-card px-5 pt-0 pb-5">
+            <div className="border-border/60 bg-background/50 flex items-center gap-2 rounded-lg border px-4 py-3 shadow-sm transition-all hover:shadow-md">
+              <div className="text-muted-foreground flex-1 text-sm">
+                Upload a source to get started
+              </div>
+              <div className="bg-muted/50 text-muted-foreground flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium">
+                <span>{sourceCount} sources</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -735,6 +934,9 @@ export default function NotebookDetailPage({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
   const [websiteUrl, setWebsiteUrl] = useState("");
+  const [deletingSourceIds, setDeletingSourceIds] = useState<Set<string>>(
+    new Set()
+  );
 
   const {
     data: notebook,
@@ -778,14 +980,48 @@ export default function NotebookDetailPage({
       toast.success("File uploaded successfully!", {
         id: "upload-file",
       });
+      // Dismiss and show success for website upload toast
+      toast.success("Website uploaded successfully!", {
+        id: "upload-url",
+      });
       utils.sourcesRouter.getSources.invalidate({ notebookId });
     },
     onError: (error) => {
       toast.error(error.message || "Failed to upload file", {
         id: "upload-file",
       });
+      // Dismiss and show error for website upload toast
+      toast.error(error.message || "Failed to upload website", {
+        id: "upload-url",
+      });
     },
   });
+
+  const deleteSource = trpc.sourcesRouter.deleteSource.useMutation({
+    onSuccess: () => {
+      toast.success("Source deleted successfully!", {
+        id: "delete-source",
+      });
+      utils.sourcesRouter.getSources.invalidate({ notebookId });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete source", {
+        id: "delete-source",
+      });
+    },
+    onSettled: (_, __, variables) => {
+      setDeletingSourceIds((prev) => {
+        const next = new Set(prev);
+        next.delete(variables.sourceId);
+        return next;
+      });
+    },
+  });
+
+  const handleDeleteSource = async (sourceId: string) => {
+    setDeletingSourceIds((prev) => new Set(prev).add(sourceId));
+    await deleteSource.mutateAsync({ sourceId });
+  };
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -894,6 +1130,8 @@ export default function NotebookDetailPage({
           onToggleCollapse={() => setSourcesCollapsed(!sourcesCollapsed)}
           onAddSource={() => setIsAddSourceDialogOpen(true)}
           isUploading={isUploading}
+          onDeleteSource={handleDeleteSource}
+          deletingSourceIds={deletingSourceIds}
         />
 
         <ChatPane
