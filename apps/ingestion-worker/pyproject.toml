@@ -1,8 +1,7 @@
 [project]
 name = "ingestion-worker"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Ingestion worker for Krag"
 requires-python = ">=3.11"
 dependencies = [
     "exa-py>=2.2.0",
@@ -11,4 +10,8 @@ dependencies = [
     "prisma>=0.15.0",
     "pypdf>=6.6.2",
     "supabase>=2.27.2",
+    "modal-services>=0.1.0",
 ]
+
+[tool.uv.sources]
+modal-services = { workspace = true }

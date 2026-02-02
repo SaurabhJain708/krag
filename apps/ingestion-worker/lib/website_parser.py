@@ -4,7 +4,7 @@ from exa_py import Exa
 from lib.chunker import process_chunks
 from lib.redis_client import update_source_status
 from lib.save_to_db import save_to_db
-from modal_service import BGEM3Embedder
+from modal_services import BGEM3Embedder
 from schemas.index import FileProcessingStatus
 
 exa = Exa(os.environ.get("EXA_API_KEY"))

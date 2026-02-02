@@ -20,7 +20,7 @@ from lib.redis_client import (  # noqa: E402
     update_source_status,
 )
 from lib.website_parser import parse_website  # noqa: E402
-from modal_service import app  # noqa: E402
+from modal_services import app  # noqa: E402
 from schemas.index import FileProcessingStatus  # noqa: E402
 from utils.db_client import close_db, get_db, init_db  # noqa: E402
 

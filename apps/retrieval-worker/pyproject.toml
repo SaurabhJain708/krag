@@ -1,0 +1,11 @@
+[project]
+name = "retrieval-worker"
+version = "0.1.0"
+description = "Retrieval worker for Krag"
+requires-python = ">=3.12"
+dependencies = [
+    "modal-services>=0.1.0",
+]
+
+[tool.uv.sources]
+modal-services = { workspace = true }

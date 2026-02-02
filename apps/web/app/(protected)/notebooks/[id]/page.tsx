@@ -320,7 +320,7 @@ function SourceItem({
       <Button
         variant="ghost"
         size="icon"
-        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-6 w-6 shrink-0 cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -976,24 +976,28 @@ export default function NotebookDetailPage({
 
   const utils = trpc.useUtils();
   const uploadFile = trpc.sourcesRouter.uploadFile.useMutation({
-    onSuccess: () => {
-      toast.success("File uploaded successfully!", {
-        id: "upload-file",
-      });
-      // Dismiss and show success for website upload toast
-      toast.success("Website uploaded successfully!", {
-        id: "upload-url",
-      });
+    onSuccess: (_, variables) => {
+      if (variables.websiteUrl) {
+        toast.success("Website uploaded successfully!", {
+          id: "upload-url",
+        });
+      } else {
+        toast.success("File uploaded successfully!", {
+          id: "upload-file",
+        });
+      }
       utils.sourcesRouter.getSources.invalidate({ notebookId });
     },
-    onError: (error) => {
-      toast.error(error.message || "Failed to upload file", {
-        id: "upload-file",
-      });
-      // Dismiss and show error for website upload toast
-      toast.error(error.message || "Failed to upload website", {
-        id: "upload-url",
-      });
+    onError: (error, variables) => {
+      if (variables.websiteUrl) {
+        toast.error(error.message || "Failed to upload website", {
+          id: "upload-url",
+        });
+      } else {
+        toast.error(error.message || "Failed to upload file", {
+          id: "upload-file",
+        });
+      }
     },
   });
 

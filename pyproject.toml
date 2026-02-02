@@ -13,6 +13,7 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "apps/*",
+    "packages/modal_services",
 ]
 exclude = [
     "apps/web"
@@ -63,3 +64,9 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "workers"]
+
+[dependency-groups]
+dev = [
+    "black>=26.1.0",
+    "ruff>=0.14.14",
+]
