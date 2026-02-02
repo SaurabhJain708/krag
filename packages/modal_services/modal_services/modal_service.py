@@ -296,12 +296,10 @@ class BGEM3Embedder:
 class Qwen2_5_7BAWQ:
     @modal.enter()
     def setup(self):
-        from transformers import AutoTokenizer  # type: ignore
         from vllm.engine.arg_utils import AsyncEngineArgs  # type: ignore
         from vllm.engine.async_llm_engine import AsyncLLMEngine  # type: ignore
 
         model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
         engine_args = AsyncEngineArgs(
             model=model_name,
@@ -316,9 +314,9 @@ class Qwen2_5_7BAWQ:
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
 
     @modal.method()
-    async def chat(
+    async def generate(
         self,
-        messages: list[dict],
+        prompt: str,
         max_tokens: int = 2048,
         temperature: float = 0.1,
         json_schema: str | None = None,
@@ -327,9 +325,7 @@ class Qwen2_5_7BAWQ:
 
         from vllm import SamplingParams  # type: ignore
 
-        prompt = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+        # No template application here. We assume 'prompt' is already formatted.
 
         # Configure Sampling with Guided Decoding
         sampling_params = SamplingParams(

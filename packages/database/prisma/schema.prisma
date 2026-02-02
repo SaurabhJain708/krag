@@ -16,6 +16,12 @@ generator client_py {
   output    = "../../../apps/ingestion-worker/generated/db"
 }
 
+generator client_py_retrieval {
+  provider  = "prisma-client-py"
+  interface = "asyncio"
+  output    = "../../../apps/retrieval-worker/generated/db"
+}
+
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")

@@ -1793,6 +1793,7 @@ source = { virtual = "apps/retrieval-worker" }
 dependencies = [
     { name = "fastapi" },
     { name = "modal-services" },
+    { name = "prisma" },
     { name = "uvicorn" },
 ]
 
@@ -1800,6 +1801,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "modal-services", editable = "packages/modal_services" },
+    { name = "prisma", specifier = ">=0.15.0" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 

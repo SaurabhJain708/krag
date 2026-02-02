@@ -446,56 +446,60 @@ function SourcesPane({
   );
 }
 
-// Message type
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-};
-
 // Chat Pane Component
 function ChatPane({
   sourcesCollapsed,
   onShowSources,
   onAddSource,
   sourceCount,
+  notebookId,
 }: {
   sourcesCollapsed: boolean;
   onShowSources: () => void;
   onAddSource: () => void;
   sourceCount: number;
+  notebookId: string;
 }) {
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const hasSources = sourceCount > 0;
+
+  const utils = trpc.useUtils();
+
+  const { data: messages = [], isLoading: isLoadingMessages } =
+    trpc.messagesRouter.getMessages.useQuery({
+      notebookId,
+    });
+
+  const createMessage = trpc.messagesRouter.createMessage.useMutation({
+    onSuccess: () => {
+      setMessage("");
+      setIsLoading(false);
+      utils.messagesRouter.getMessages.invalidate({ notebookId });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send message", {
+        id: "create-message",
+      });
+      setIsLoading(false);
+    },
+  });
 
   const handleSend = async () => {
     if (!message.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: message.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setMessage("");
     setIsLoading(true);
+    toast.loading("Sending message...", { id: "create-message" });
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `Based on your sources, here's a comprehensive answer to your question: "${userMessage.content}". This is a dummy response that demonstrates how the AI chat interface will work. The actual implementation will connect to your AI backend to provide real answers based on the content from your uploaded sources.`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsLoading(false);
-    }, 1000);
+    try {
+      await createMessage.mutateAsync({
+        notebookId,
+        content: message.trim(),
+      });
+      // Success is handled by onSuccess callback
+    } catch {
+      // Error is handled by onError callback
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -533,7 +537,16 @@ function ChatPane({
         <>
           {/* Messages Area */}
           <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
-            {messages.length === 0 ? (
+            {isLoadingMessages ? (
+              <div className="flex flex-1 items-center justify-center py-12">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+                  <span className="text-muted-foreground text-sm">
+                    Loading messages...
+                  </span>
+                </div>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="flex flex-1 items-center justify-center py-12">
                 <div className="flex max-w-sm flex-col items-center gap-4 text-center">
                   <div className="bg-primary/10 ring-primary/20 flex h-14 w-14 items-center justify-center rounded-full ring-1">
@@ -1143,6 +1156,7 @@ export default function NotebookDetailPage({
           onShowSources={() => setSourcesCollapsed(false)}
           onAddSource={() => setIsAddSourceDialogOpen(true)}
           sourceCount={sourceCount}
+          notebookId={notebookId}
         />
       </div>
 

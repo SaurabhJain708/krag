@@ -28,7 +28,8 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "MODAL_TOKEN_ID",
         "MODAL_TOKEN_SECRET",
-        "EXA_API_KEY"
+        "EXA_API_KEY",
+        "RETRIEVAL_API"
       ]
     },
     "lint": {
@@ -53,7 +54,8 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "MODAL_TOKEN_ID",
         "MODAL_TOKEN_SECRET",
-        "EXA_API_KEY"
+        "EXA_API_KEY",
+        "RETRIEVAL_API"
       ]
     }
   }
