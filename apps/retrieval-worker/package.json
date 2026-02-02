@@ -1,0 +1,10 @@
+{
+  "name": "retrieval-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run uvicorn src.main:app --reload --port 8002",
+    "start": "uv run uvicorn src.main:app --host 0.0.0.0 --port 8002",
+    "lint": "uv run ruff check ."
+  }
+}

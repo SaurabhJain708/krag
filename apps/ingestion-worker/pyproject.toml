@@ -10,8 +10,8 @@ dependencies = [
     "prisma>=0.15.0",
     "pypdf>=6.6.2",
     "supabase>=2.27.2",
-    "modal-services>=0.1.0",
+    "modal_services>=0.1.0",
 ]
 
 [tool.uv.sources]
-modal-services = { workspace = true }
+modal_services = { workspace = true }

@@ -5,8 +5,6 @@ try:
 
     load_dotenv()
 except ImportError:
-    # This suppresses the error inside the container where
-    # python-dotenv is not installed, preventing the crash.
     pass
 
 # Marker Parser Image
@@ -18,14 +16,11 @@ pdf_parser_image = (
     .env(
         {
             "HF_HUB_CACHE": "/root/.cache/huggingface",
-            # We set the DEFAULT to cuda, so your running app finds the GPU
             "TORCH_DEVICE": "cuda",
             "INFERENCE_RAM": "24",
         }
     )
     .run_commands(
-        # We prepend TORCH_DEVICE=cpu to override the global setting
-        # just for this specific download command.
         "TORCH_DEVICE=cpu python -c 'from marker.models import create_model_dict; create_model_dict()'"
     )
 )
@@ -34,25 +29,18 @@ pdf_parser_image = (
 florence_image = (
     modal.Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .env({"DEBIAN_FRONTEND": "noninteractive", "TZ": "Etc/UTC"})
-    # 1. Force Install Specific Torch 2.3.0 (The most stable recent version)
-    # We use --index-url to STOP pip from looking at your local mirror (which has the weird 2.10 version)
     .pip_install(
         "torch==2.3.0",
         "torchvision==0.18.0",
         extra_index_url="https://download.pytorch.org/whl/cu121",
     )
-    # 2. Install Flash Attention from a known-good pre-built wheel
-    # This URL is the "Standard" one for Torch 2.3.0 + CUDA 12.1 + Python 3.10
     .pip_install(
         "https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.8/flash_attn-2.5.8+cu122torch2.3cxx11abiFALSE-cp310-cp310-linux_x86_64.whl"
     )
-    # 3. Install the rest of the stack
-    # We pin transformers to a version known to work well with Florence-2
     .pip_install(
         "transformers==4.41.2", "pillow", "einops", "timm", "packaging", "ninja"
     )
     .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
-    # 4. Download Model
     .run_commands(
         "python -c 'from transformers import AutoModelForCausalLM, AutoProcessor; "
         'model_id="microsoft/Florence-2-large"; '
@@ -67,7 +55,7 @@ bge_m3_image = (
     .env({"DEBIAN_FRONTEND": "noninteractive", "TZ": "Etc/UTC"})
     .pip_install(
         "torch==2.3.0",
-        "transformers==4.46.3",  # PINNED: Fixes the 5.0.0 incompatibility
+        "transformers==4.46.3",
         "FlagEmbedding",
         "numpy",
     )
@@ -77,21 +65,31 @@ bge_m3_image = (
     )
 )
 
+vllm_image = (
+    modal.Image.debian_slim(python_version="3.10")
+    .pip_install("vllm==0.6.3", "huggingface_hub")
+    .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
+    .run_commands(
+        "python -c 'from huggingface_hub import snapshot_download; "
+        'snapshot_download("Qwen/Qwen2.5-7B-Instruct-AWQ")\''
+    )
+)
+
 # App
 app = modal.App("ingestion-worker")
 
 
 # Marker Parser
 @app.cls(
-    gpu="L4",  # 24GB VRAM
+    gpu="L4",
     image=pdf_parser_image,
-    max_containers=6,  # Total Pool: Max 6 GPUs allowed
-    cpu=8.0,  # Feeder: 2 vCPUs per worker to prevent bottlenecks
-    scaledown_window=60,  # Keep warm for 60s
+    max_containers=6,
+    cpu=8.0,
+    scaledown_window=60,
     retries=3,
     secrets=[modal.Secret.from_dotenv()],
 )
-@modal.concurrent(max_inputs=4)  # Density: 4 requests running per GPU
+@modal.concurrent(max_inputs=4)
 class MarkerParser:
     @modal.enter()
     def setup(self):
@@ -122,8 +120,6 @@ class MarkerParser:
         import torch  # type: ignore
         from marker.output import text_from_rendered  # type: ignore
 
-        # 1. Use tempfile for thread safety!
-        # If 4 workers save to "/root/doc.pdf" at the same time, they will corrupt data.
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as temp_pdf:
             temp_pdf.write(pdf_data)
             temp_pdf.flush()  # Flush Python buffer
@@ -131,16 +127,10 @@ class MarkerParser:
 
             print(f"Processing size: {len(pdf_data)/1024:.1f} KB")
 
-            # 2. Run Inference
-            # batch_multiplier=1 ensures we don't hog VRAM, leaving room for other workers
             rendered = self.converter(temp_pdf.name)
 
-            # 3. Extract Output
             text, _, images = text_from_rendered(rendered)
 
-            # 4. Replace image names with UUIDs and convert PIL Images to bytes
-            # images is a dict: {old_filename: image_data, ...}
-            # image_data can be PIL Image objects or bytes
             new_images = {}
             name_mapping = {}  # old_name -> new_uuid
 
@@ -196,7 +186,7 @@ class MarkerParser:
     scaledown_window=60,
     secrets=[modal.Secret.from_dotenv()],
 )
-@modal.concurrent(max_inputs=8)  # 8 concurrent requests per container
+@modal.concurrent(max_inputs=8)
 class FlorenceSummarizer:
     @modal.enter()
     def setup(self):
@@ -260,7 +250,7 @@ class FlorenceSummarizer:
     scaledown_window=60,
     secrets=[modal.Secret.from_dotenv()],
 )
-@modal.concurrent(max_inputs=32)  # High concurrency allowed: Embeddings batch well
+@modal.concurrent(max_inputs=32)
 class BGEM3Embedder:
     @modal.enter()
     def setup(self):
@@ -291,3 +281,69 @@ class BGEM3Embedder:
 
         # Output['dense_vecs'] is a numpy array, convert to list for serialization
         return output["dense_vecs"].tolist()
+
+
+@app.cls(
+    gpu="L4",
+    image=vllm_image,
+    max_containers=1,
+    timeout=600,
+    scaledown_window=60,
+    retries=3,
+    secrets=[modal.Secret.from_dotenv()],
+)
+@modal.concurrent(max_inputs=15)
+class Qwen2_5_7BAWQ:
+    @modal.enter()
+    def setup(self):
+        from transformers import AutoTokenizer  # type: ignore
+        from vllm.engine.arg_utils import AsyncEngineArgs  # type: ignore
+        from vllm.engine.async_llm_engine import AsyncLLMEngine  # type: ignore
+
+        model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        engine_args = AsyncEngineArgs(
+            model=model_name,
+            quantization="awq",
+            dtype="half",
+            gpu_memory_utilization=0.90,
+            max_model_len=8192,
+            enforce_eager=False,
+            trust_remote_code=True,
+        )
+
+        self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+
+    @modal.method()
+    async def chat(
+        self,
+        messages: list[dict],
+        max_tokens: int = 2048,
+        temperature: float = 0.1,
+        json_schema: str | None = None,
+    ) -> str:
+        import uuid
+
+        from vllm import SamplingParams  # type: ignore
+
+        prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+
+        # Configure Sampling with Guided Decoding
+        sampling_params = SamplingParams(
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=0.95,
+            guided_json=json_schema if json_schema else None,
+        )
+
+        request_id = str(uuid.uuid4())
+        results_generator = self.engine.generate(prompt, sampling_params, request_id)
+
+        final_output = None
+        async for request_output in results_generator:
+            final_output = request_output
+
+        return final_output.outputs[0].text.strip()
