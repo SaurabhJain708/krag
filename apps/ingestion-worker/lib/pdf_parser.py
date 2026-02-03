@@ -1,16 +1,12 @@
 from lib.chunker import process_chunks
+from lib.modal_clients import remote_embedder, remote_parser, remote_summarizer
 from lib.redis_client import update_source_status
 from lib.save_to_db import save_to_db
-from modal_services import BGEM3Embedder, FlorenceSummarizer, MarkerParser
 from schemas.index import FileProcessingStatus
 from utils.split_pdf_pages import (
     base64_to_chunked_pdfs,
     replace_markdown_images_with_html,
 )
-
-remote_parser = MarkerParser()
-remote_summarizer = FlorenceSummarizer()
-remote_embedder = BGEM3Embedder()
 
 
 async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):

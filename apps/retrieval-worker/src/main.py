@@ -1,11 +1,19 @@
+from contextlib import asynccontextmanager
 from types import MessageData
 
 from fastapi import FastAPI
-from modal_services import Qwen2_5_7BAWQ
+from utils.db_client import close_db, init_db
+from utils.prepare_question import prepare_question
 
-app = FastAPI()
 
-remote_llm = Qwen2_5_7BAWQ()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await init_db()
+    yield
+    await close_db()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/search")
@@ -22,15 +30,10 @@ async def chat(request: MessageData):
     content = message_data.content
     role = message_data.role
 
-    response = await remote_llm.generate(
-        prompt=content,
-        max_tokens=2048,
-        temperature=0.1,
-        json_schema=None,
-    )
+    prepared_question = await prepare_question(content)
 
     print(content, user_id, notebook_id, message_id, role)
 
-    print(response)
+    print(prepared_question)
 
     return

@@ -2,14 +2,12 @@ import os
 
 from exa_py import Exa
 from lib.chunker import process_chunks
+from lib.modal_clients import remote_embedder
 from lib.redis_client import update_source_status
 from lib.save_to_db import save_to_db
-from modal_services import BGEM3Embedder
 from schemas.index import FileProcessingStatus
 
 exa = Exa(os.environ.get("EXA_API_KEY"))
-
-remote_embedder = BGEM3Embedder()
 
 
 async def parse_website(website_url: str, user_id: str, source_id: str) -> str:
