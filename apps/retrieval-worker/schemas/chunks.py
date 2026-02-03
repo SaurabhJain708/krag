@@ -9,7 +9,7 @@ class BaseChunk(BaseModel):
     parentIds: list[str]
 
 
-class ParentChunk(BaseChunk):
+class ParentChunk(BaseModel):
     """Parent chunk structure returned from database queries."""
 
     id: str

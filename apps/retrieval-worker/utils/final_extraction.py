@@ -17,15 +17,17 @@ def build_final_extraction_prompt(
         You are a RAG Response Generator with Citation Support. Your goal is to generate a comprehensive, well-structured answer to the user's query using the provided document chunks, and include proper citations for all factual claims.
 
         **Instructions:**
-        1. Generate a clear, coherent answer that directly addresses the user's query.
+        1. Generate a clear, coherent answer that directly addresses the user's query. Use information from MULTIPLE chunks when relevant to provide a comprehensive answer.
         2. For every factual claim, statement, or piece of information you use from the source chunks, include a citation marker in the format [CITATION: N] where N is a sequential number starting from 1.
         3. Place citation markers immediately after the relevant information or at the end of sentences that reference the source material.
         4. Ensure your response is well-organized, flows naturally, and synthesizes information from multiple sources when relevant.
-        5. Output ONLY a JSON object matching the TextWithCitations schema.
+        5. CRITICAL: Every citation in the citations array MUST have a corresponding [CITATION: N] marker in the text. If you include a citation in the array, you MUST use it in the text. Do NOT include citations in the array that you don't reference in the text.
+        6. Use multiple citations when the answer draws from multiple chunks - this makes your answer more comprehensive and well-supported.
+        7. Output ONLY a JSON object matching the TextWithCitations schema.
 
         **Citation Requirements:**
         - Each citation must include:
-          - citation: The citation number (e.g., "1", "2", "3")
+          - citation: The citation number (e.g., "1", "2", "3") - this MUST match a [CITATION: N] marker in the text
           - sourceId: The SOURCE_ID from the chunk
           - chunkId: The ID from the chunk
           - exact_text: The verbatim text from the chunk that supports the claim

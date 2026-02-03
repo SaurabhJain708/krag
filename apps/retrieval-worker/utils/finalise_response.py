@@ -26,15 +26,20 @@ def replace_with_citation(text_with_citations: TextWithCitations) -> str:
     citations = text_with_citations.citations
     final_response = text_with_citations.text
 
+    # Only process citations that actually appear in the text
     for citation in citations:
+        pattern = rf"\[CITATION:\s*{re.escape(citation.citation)}\s*\]"
+
+        # Check if this citation marker exists in the text
+        if not re.search(pattern, final_response):
+            continue  # Skip citations that don't appear in the text
+
         exact_text_escaped = citation.exact_text.replace('"', "&quot;").replace(
             "'", "&apos;"
         )
         summary_escaped = citation.brief_summary.replace('"', "&quot;").replace(
             "'", "&apos;"
         )
-
-        pattern = rf"\[CITATION:\s*{re.escape(citation.citation)}\s*\]"
 
         def replace_with_citation(
             _match,

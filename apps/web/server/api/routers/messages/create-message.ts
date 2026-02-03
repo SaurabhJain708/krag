@@ -23,7 +23,7 @@ export const CreateMessage = protectedProcedure
       throw new Error("Notebook not found");
     }
 
-    const message = await ctx.db.message.create({
+    await ctx.db.message.create({
       data: {
         notebookId,
         content,
@@ -48,12 +48,26 @@ export const CreateMessage = protectedProcedure
       })
     );
 
-    await axios.post(`${process.env.RETRIEVAL_API}`, {
-      data: {
-        notebook_id: notebookId,
-        assistant_message_id: assistantMessage.id,
-        content: content,
-      },
-    });
+    // Kick off retrieval / LLM work asynchronously so this request
+    // doesn't block (and potentially time out) while the Python worker
+    // runs for 2–3 minutes.
+    void axios
+      .post(
+        `${process.env.RETRIEVAL_API}`,
+        {
+          notebook_id: notebookId,
+          assistant_message_id: assistantMessage.id,
+          content: content,
+        },
+        {
+          // Allow plenty of time for the retrieval API to respond;
+          // this only affects the background call, not the tRPC response.
+          timeout: 5 * 60 * 1000, // 5 minutes
+        }
+      )
+      .catch((err) => {
+        console.error("Failed to call retrieval API", err);
+      });
+
     return { success: true };
   });

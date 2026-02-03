@@ -78,7 +78,7 @@ async def retrive_vector_chunks(
 async def retrieve_chunks(
     notebook_id: str, optimized_query: str, keywords: list[str]
 ) -> list[BaseChunk]:
-    embeddings = await remote_embedder.generate_embeddings.aio(optimized_query)
+    embeddings = await remote_embedder.generate_embeddings.remote.aio(optimized_query)
 
     vector_chunks, keyword_chunks = await asyncio.gather(
         retrive_vector_chunks(notebook_id, embeddings),

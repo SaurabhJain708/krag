@@ -26,7 +26,9 @@ async def process_request(
     print(f"Retrieved chunks: {chunks}")
 
     # 3. Filter the chunks using LLM
-    filtered_chunks = await filter_chunks_using_llm(chunks)
+    filtered_chunks = await filter_chunks_using_llm(
+        chunks, prepared_question.optimized_query
+    )
     print(f"Filtered chunks: {filtered_chunks}")
 
     # 4. Get the parent chunks
@@ -44,7 +46,7 @@ async def process_request(
     print(f"Extracted content: {extracted_content}")
 
     # 6. Finalise the response
-    final_response = await finalise_response(extracted_content)
+    final_response = finalise_response(extracted_content)
     print(f"Final response: {final_response}")
 
     # 7. Save the response to the database
