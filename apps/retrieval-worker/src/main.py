@@ -2,8 +2,8 @@ from contextlib import asynccontextmanager
 from types import MessageData
 
 from fastapi import FastAPI
+from lib.process_request import process_request
 from utils.db_client import close_db, init_db
-from utils.prepare_question import prepare_question
 
 
 @asynccontextmanager
@@ -24,16 +24,10 @@ def search(q: str):
 @app.post("/chat")
 async def chat(request: MessageData):
     message_data = request.data
-    user_id = message_data.user_id
     notebook_id = message_data.notebook_id
-    message_id = message_data.message_id
+    assistant_message_id = message_data.assistant_message_id
     content = message_data.content
-    role = message_data.role
 
-    prepared_question = await prepare_question(content)
-
-    print(content, user_id, notebook_id, message_id, role)
-
-    print(prepared_question)
+    await process_request(notebook_id, assistant_message_id, content)
 
     return

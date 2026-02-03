@@ -2,6 +2,7 @@
 
 from .chunk_filter import SelectedChunkIds
 from .chunks import BaseChunk, ParentChunk
+from .citations import Citation, TextWithCitations
 from .messages import MessageData
 from .query_optimizer import QueryOptimizer
 
@@ -11,4 +12,6 @@ __all__ = [
     "BaseChunk",
     "SelectedChunkIds",
     "ParentChunk",
+    "Citation",
+    "TextWithCitations",
 ]

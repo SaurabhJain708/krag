@@ -32,6 +32,15 @@ export const CreateMessage = protectedProcedure
       },
     });
 
+    const assistantMessage = await ctx.db.message.create({
+      data: {
+        notebookId,
+        content: "",
+        userId,
+        role: "assistant",
+      },
+    });
+
     await redis.set(
       `message:${message.id}`,
       JSON.stringify({
@@ -41,11 +50,9 @@ export const CreateMessage = protectedProcedure
 
     await axios.post(`${process.env.RETRIEVAL_API}`, {
       data: {
-        user_id: userId,
         notebook_id: notebookId,
-        message_id: message.id,
+        assistant_message_id: assistantMessage.id,
         content: content,
-        role: "user",
       },
     });
     return { success: true };
