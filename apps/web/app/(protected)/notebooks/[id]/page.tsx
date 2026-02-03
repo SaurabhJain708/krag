@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Streamdown } from "streamdown";
 
 // Utility functions
 const fileToBase64 = (file: File): Promise<string> => {
@@ -586,9 +587,13 @@ function ChatPane({
                           : "bg-muted text-foreground border-border/50 border"
                       )}
                     >
-                      <p className="wrap-break-word whitespace-pre-wrap">
-                        {msg.content}
-                      </p>
+                      {msg.role === "assistant" ? (
+                        <Streamdown>{msg.content}</Streamdown>
+                      ) : (
+                        <p className="wrap-break-word whitespace-pre-wrap">
+                          {msg.content}
+                        </p>
+                      )}
                     </div>
                     {msg.role === "user" && (
                       <div className="bg-muted mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">

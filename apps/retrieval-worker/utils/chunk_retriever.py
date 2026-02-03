@@ -1,8 +1,8 @@
 import asyncio
 import re
-from types import BaseChunk
 
 from lib.llm_client import remote_embedder
+from schemas import BaseChunk
 from utils.db_client import get_db
 
 

@@ -1,6 +1,7 @@
 import re
 import uuid
-from types import TextWithCitations
+
+from schemas import TextWithCitations
 
 
 def renumber_citations(text: str) -> str:

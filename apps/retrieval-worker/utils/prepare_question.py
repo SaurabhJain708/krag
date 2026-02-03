@@ -1,7 +1,7 @@
 import json
-from types.query_optimizer import QueryOptimizer
 
 from lib.llm_client import remote_llm
+from schemas.query_optimizer import QueryOptimizer
 
 json_schema_str = json.dumps(QueryOptimizer.model_json_schema())
 

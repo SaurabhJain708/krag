@@ -1,4 +1,4 @@
-from db_client import get_db
+from utils.db_client import get_db
 
 
 async def save_to_db(assistant_message_id: str, content: str) -> None:

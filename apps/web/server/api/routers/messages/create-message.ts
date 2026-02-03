@@ -42,7 +42,7 @@ export const CreateMessage = protectedProcedure
     });
 
     await redis.set(
-      `message:${message.id}`,
+      `Notebook:${notebookId}:message:${assistantMessage.id}`,
       JSON.stringify({
         status: "uploading",
       })

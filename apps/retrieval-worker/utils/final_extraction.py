@@ -1,7 +1,7 @@
 import json
-from types import ParentChunk, TextWithCitations
 
 from lib.llm_client import remote_llm
+from schemas import ParentChunk, TextWithCitations
 
 json_schema_str = json.dumps(TextWithCitations.model_json_schema())
 

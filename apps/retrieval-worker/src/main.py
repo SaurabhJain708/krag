@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
-from types import MessageData
 
 from fastapi import FastAPI
 from lib.process_request import process_request
+from schemas import MessageData
 from utils.db_client import close_db, init_db
 
 

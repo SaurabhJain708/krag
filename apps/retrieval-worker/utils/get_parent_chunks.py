@@ -1,5 +1,4 @@
-from types import ParentChunk
-
+from schemas import ParentChunk
 from utils.db_client import get_db
 
 

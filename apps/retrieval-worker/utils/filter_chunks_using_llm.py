@@ -1,7 +1,7 @@
 import json
-from types import BaseChunk, SelectedChunkIds
 
 from lib.llm_client import remote_llm
+from schemas import BaseChunk, SelectedChunkIds
 
 json_schema_str = json.dumps(SelectedChunkIds.model_json_schema())
 
