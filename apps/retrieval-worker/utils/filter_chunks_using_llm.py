@@ -1,6 +1,5 @@
 import json
-from types.chunk_filter import SelectedChunkIds
-from types.chunk_retriever import BaseChunk
+from types import BaseChunk, SelectedChunkIds
 
 from lib.llm_client import remote_llm
 
@@ -35,7 +34,7 @@ def build_selection_prompt(user_query: str, chunks: list[BaseChunk]) -> str:
 
 async def filter_chunks_using_llm(
     chunks: list[BaseChunk], optimised_query: str
-) -> list[BaseChunk]:
+) -> list[str]:
     prompt = build_selection_prompt(optimised_query, chunks)
     print(prompt)
     response_text = await remote_llm.generate.remote.aio(
@@ -46,7 +45,11 @@ async def filter_chunks_using_llm(
     )
 
     selected_chunk_ids = SelectedChunkIds.model_validate_json(response_text)
-    selected_chunks = [
-        chunk for chunk in chunks if chunk.id in selected_chunk_ids.selected_ids
-    ]
-    return selected_chunks
+    selected_ids_set = set(selected_chunk_ids.selected_ids)
+
+    selected_parent_ids = []
+    for chunk in chunks:
+        if chunk.id in selected_ids_set:
+            selected_parent_ids.extend(chunk.parentIds)
+
+    return selected_parent_ids

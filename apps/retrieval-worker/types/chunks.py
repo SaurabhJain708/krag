@@ -1,0 +1,17 @@
+from pydantic import BaseModel
+
+
+class BaseChunk(BaseModel):
+    """Base chunk structure returned from database queries."""
+
+    id: str
+    content: str
+    parentIds: list[str]
+
+
+class ParentChunk(BaseChunk):
+    """Parent chunk structure returned from database queries."""
+
+    id: str
+    content: str
+    sourceId: str

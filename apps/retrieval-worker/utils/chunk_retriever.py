@@ -1,6 +1,6 @@
 import asyncio
 import re
-from types.chunk_retriever import BaseChunk
+from types import BaseChunk
 
 from lib.llm_client import remote_embedder
 from utils.db_client import get_db
