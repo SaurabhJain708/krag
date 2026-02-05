@@ -6,7 +6,8 @@ from schemas import TextWithCitations
 
 def renumber_citations(text: str) -> str:
     """Renumber citations based on their appearance order in the text."""
-    uuid_pattern = r"<citation[^>]*>\[([a-f0-9-]{36})\]</citation>"
+    # Updated to match span elements with data-citation attribute
+    uuid_pattern = r'<span[^>]*data-citation="true"[^>]*>\[([a-f0-9-]{36})\]</span>'
     uuid_to_order = {}
     order = 1
 
@@ -49,7 +50,9 @@ def replace_with_citation(text_with_citations: TextWithCitations) -> str:
             summary=summary_escaped,
         ):
             citation_uuid = str(uuid.uuid4())
-            return f'<citation exactText="{exact_text}" sourceId="{source_id}" chunkId="{chunk_id}" summary="{summary}">[{citation_uuid}]</citation>'
+            # Use span with data attributes instead of custom citation tag
+            # This works with Streamdown's rehype-sanitize which strips custom HTML tags
+            return f'<span data-citation="true" data-exact-text="{exact_text}" data-source-id="{source_id}" data-chunk-id="{chunk_id}" data-summary="{summary}">[{citation_uuid}]</span>'
 
         final_response = re.sub(pattern, replace_with_citation, final_response)
 
