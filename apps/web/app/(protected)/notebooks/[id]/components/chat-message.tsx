@@ -11,9 +11,18 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+interface CitationData {
+  exactText: string;
+  sourceId: string;
+  chunkId: string;
+  summary: string;
+  citationNumber: string;
+}
+
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  onCitationClick?: (citation: CitationData) => void;
 }
 
 // Parse citation data from original message content by matching citation number
@@ -57,6 +66,7 @@ const parseCitationFromContent = (content: string, citationNumber: string) => {
     sourceId,
     chunkId,
     summary,
+    citationNumber,
   };
 };
 
@@ -65,6 +75,7 @@ const CitationButton = (
     "data-citation-number"?: string;
     children?: React.ReactNode;
     __originalContent?: string;
+    onCitationClick?: (citation: CitationData) => void;
   }
 ) => {
   // Get citation number from children (e.g., "[1]")
@@ -87,15 +98,20 @@ const CitationButton = (
     return <span {...props} />;
   }
 
-  const { exactText, sourceId, summary } = citationData;
+  const { exactText, summary } = citationData;
   const children = props.children;
+  const { onCitationClick } = props;
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            onClick={() => console.log("Navigate to source:", sourceId)}
+            onClick={() => {
+              if (onCitationClick) {
+                onCitationClick(citationData);
+              }
+            }}
             className={cn(
               "relative inline-flex cursor-pointer items-baseline",
               "text-sm leading-none font-semibold",
@@ -134,7 +150,11 @@ const CitationButton = (
   );
 };
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({
+  role,
+  content,
+  onCitationClick,
+}: ChatMessageProps) {
   return (
     <div
       className={cn(
@@ -181,6 +201,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
                     const citationProps = {
                       ...props,
                       __originalContent: content,
+                      onCitationClick,
                     };
                     return <CitationButton {...citationProps} />;
                   }

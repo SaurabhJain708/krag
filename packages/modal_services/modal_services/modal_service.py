@@ -331,7 +331,7 @@ class Qwen2_5_7BAWQ:
             quantization="awq",
             dtype="half",
             gpu_memory_utilization=0.90,
-            max_model_len=8192,
+            max_model_len=16384,
             enforce_eager=False,
             trust_remote_code=False,  # Keep this False!
         )

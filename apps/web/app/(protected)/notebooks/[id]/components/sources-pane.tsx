@@ -39,8 +39,8 @@ export function SourcesPane({
       className={cn(
         "bg-card border-border/40 flex flex-col overflow-hidden rounded-lg border shadow-sm transition-all duration-300 ease-in-out",
         sourcesCollapsed
-          ? "mr-0 w-0 -translate-x-full opacity-0"
-          : "mr-0 w-[400px] translate-x-0 opacity-100"
+          ? "pointer-events-none mr-0 h-0 w-full -translate-x-full opacity-0 lg:h-auto lg:w-0"
+          : "mr-0 w-full translate-x-0 opacity-100 lg:w-[360px] xl:w-[400px]"
       )}
     >
       <div

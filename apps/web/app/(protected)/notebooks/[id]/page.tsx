@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
 import { trpc } from "@/server/trpc/react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Header } from "./components/header";
 import { ErrorState } from "./components/error-state";
 import { SourcesPane } from "./components/sources-pane";
-import { ChatPane } from "./components/chat-pane";
+import { ChatPane, type ActiveCitation } from "./components/chat-pane";
+import { ViewerPane } from "./components/viewer-pane";
 import { AddSourceDialog } from "./components/add-source-dialog";
 import { Footer } from "./components/footer";
 import { fileToBase64 } from "./components/utils";
@@ -28,6 +30,9 @@ export default function NotebookDetailPage({
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [deletingSourceIds, setDeletingSourceIds] = useState<Set<string>>(
     new Set()
+  );
+  const [activeCitation, setActiveCitation] = useState<ActiveCitation | null>(
+    null
   );
 
   const {
@@ -217,7 +222,7 @@ export default function NotebookDetailPage({
         onSignOut={handleSignout}
       />
 
-      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden px-4 pt-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 pt-3 pb-3 lg:flex-row lg:gap-4 lg:px-4 lg:pt-4 lg:pb-4">
         <SourcesPane
           sources={sources}
           isLoadingSources={isLoadingSources}
@@ -230,13 +235,37 @@ export default function NotebookDetailPage({
           deletingSourceIds={deletingSourceIds}
         />
 
-        <ChatPane
-          sourcesCollapsed={sourcesCollapsed}
-          onShowSources={() => setSourcesCollapsed(false)}
-          onAddSource={() => setIsAddSourceDialogOpen(true)}
-          sourceCount={sourceCount}
-          notebookId={notebookId}
-        />
+        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+          <div
+            className={cn(
+              "flex min-h-0 flex-1",
+              !sourcesCollapsed ? "hidden lg:flex" : "flex",
+              activeCitation ? "hidden lg:flex" : ""
+            )}
+          >
+            <ChatPane
+              sourcesCollapsed={sourcesCollapsed}
+              onShowSources={() => setSourcesCollapsed(false)}
+              onAddSource={() => setIsAddSourceDialogOpen(true)}
+              sourceCount={sourceCount}
+              notebookId={notebookId}
+              onCitationClick={setActiveCitation}
+            />
+          </div>
+          {activeCitation && (
+            <div
+              className={cn(
+                "flex min-h-0",
+                !sourcesCollapsed ? "hidden lg:flex" : "flex"
+              )}
+            >
+              <ViewerPane
+                activeCitation={activeCitation}
+                onClear={() => setActiveCitation(null)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <Footer />

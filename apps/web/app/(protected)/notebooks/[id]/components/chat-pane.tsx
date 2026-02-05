@@ -25,6 +25,15 @@ interface ChatPaneProps {
   onAddSource: () => void;
   sourceCount: number;
   notebookId: string;
+  onCitationClick: (citation: ActiveCitation) => void;
+}
+
+export interface ActiveCitation {
+  exactText: string;
+  sourceId: string;
+  chunkId: string;
+  summary: string;
+  citationNumber: string;
 }
 
 export function ChatPane({
@@ -33,6 +42,7 @@ export function ChatPane({
   onAddSource,
   sourceCount,
   notebookId,
+  onCitationClick,
 }: ChatPaneProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -101,6 +111,10 @@ export function ChatPane({
     return () => clearTimeout(timeoutId);
   }, [messages, isLoading, isLoadingMessages]);
 
+  const handleCitationClick = (citation: ActiveCitation) => {
+    onCitationClick(citation);
+  };
+
   return (
     <div className="bg-card border-border/40 relative flex flex-1 flex-col overflow-hidden rounded-lg border shadow-sm">
       <button
@@ -128,63 +142,66 @@ export function ChatPane({
       {hasSources || messages.length > 0 || isLoadingMessages ? (
         <>
           {/* Messages Area */}
-          <div
-            ref={messagesContainerRef}
-            className="flex flex-1 flex-col overflow-y-auto px-4 py-6"
-          >
-            {isLoadingMessages ? (
-              <div className="flex flex-1 items-center justify-center py-12">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
-                  <span className="text-muted-foreground text-sm">
-                    Loading messages...
-                  </span>
-                </div>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center py-12">
-                <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-                  <div className="bg-primary/10 ring-primary/20 flex h-14 w-14 items-center justify-center rounded-full ring-1">
-                    <FileText className="text-primary h-7 w-7" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-foreground text-sm font-medium">
-                      Start a conversation
-                    </p>
-                    <p className="text-muted-foreground px-4 text-xs leading-relaxed">
-                      Ask questions about your sources and get AI-powered
-                      answers
-                    </p>
+          <div className="flex flex-1 flex-col gap-4 overflow-hidden px-3 py-4 lg:px-4 lg:py-6">
+            <div
+              ref={messagesContainerRef}
+              className="flex flex-1 flex-col overflow-y-auto"
+            >
+              {isLoadingMessages ? (
+                <div className="flex flex-1 items-center justify-center py-12">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+                    <span className="text-muted-foreground text-sm">
+                      Loading messages...
+                    </span>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                {messages.map((msg) => (
-                  <ChatMessage
-                    key={msg.id}
-                    role={msg.role}
-                    content={msg.content}
-                  />
-                ))}
-                {isLoading && (
-                  <div className="flex justify-start gap-3">
-                    <div className="bg-primary/10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                      <Bot className="text-primary h-4 w-4" />
+              ) : messages.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center py-12">
+                  <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+                    <div className="bg-primary/10 ring-primary/20 flex h-14 w-14 items-center justify-center rounded-full ring-1">
+                      <FileText className="text-primary h-7 w-7" />
                     </div>
-                    <div className="bg-muted border-border/50 rounded-lg border px-4 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
-                        <span className="text-muted-foreground text-sm">
-                          Thinking...
-                        </span>
+                    <div className="space-y-1.5">
+                      <p className="text-foreground text-sm font-medium">
+                        Start a conversation
+                      </p>
+                      <p className="text-muted-foreground px-4 text-xs leading-relaxed">
+                        Ask questions about your sources and get AI-powered
+                        answers
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {messages.map((msg) => (
+                    <ChatMessage
+                      key={msg.id}
+                      role={msg.role}
+                      content={msg.content}
+                      onCitationClick={handleCitationClick}
+                    />
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start gap-3">
+                      <div className="bg-primary/10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                        <Bot className="text-primary h-4 w-4" />
+                      </div>
+                      <div className="bg-muted border-border/50 rounded-lg border px-4 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
+                          <span className="text-muted-foreground text-sm">
+                            Thinking...
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Chat Input */}
