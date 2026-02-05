@@ -37,6 +37,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
@@ -510,6 +516,44 @@ function ChatPane({
     }
   };
 
+  const CitationButton = ({
+    exactText,
+    sourceId,
+    summary,
+    children,
+  }: {
+    exactText: string;
+    sourceId: string;
+    chunkId: string;
+    summary: string;
+    children: React.ReactNode;
+  }) => {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              onClick={() => console.log("Navigate to source:", sourceId)}
+              variant="outline"
+              size="icon"
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border-blue-300 bg-blue-100 text-xs font-bold text-blue-600 hover:bg-blue-200"
+            >
+              {children}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="w-64 p-3 text-xs">
+            <p className="mb-1 font-semibold">Summary:</p>
+            <p className="text-muted-foreground mb-2">{summary}</p>
+            <div className="border-border text-muted-foreground border-t pt-2 italic">
+              &quot;{exactText.slice(0, 80)}...&quot;
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   return (
     <div className="bg-card border-border/40 relative flex flex-1 flex-col overflow-hidden rounded-lg border shadow-sm">
       <button
@@ -588,7 +632,17 @@ function ChatPane({
                       )}
                     >
                       {msg.role === "assistant" ? (
-                        <Streamdown>{msg.content}</Streamdown>
+                        <Streamdown
+                          components={
+                            {
+                              citation: CitationButton,
+                            } as unknown as Parameters<
+                              typeof Streamdown
+                            >[0]["components"]
+                          }
+                        >
+                          {msg.content}
+                        </Streamdown>
                       ) : (
                         <p className="wrap-break-word whitespace-pre-wrap">
                           {msg.content}
