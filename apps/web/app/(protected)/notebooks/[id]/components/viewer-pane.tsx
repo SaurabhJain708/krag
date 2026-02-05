@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useEffect, useRef } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/server/trpc/react";
 import { Streamdown } from "streamdown";
@@ -58,21 +57,46 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
     return null;
   }, [source?.content, activeCitation?.chunkId]);
 
+  // Convert img tags to markdown image syntax for Streamdown
+  const convertImgTagsToMarkdown = (content: string): string => {
+    // Match img tags with src attribute: <img id={...} src="..." /> or <img src="..." id={...} />
+    const imgTagRegex = /<img\s+([^>]*?)\s*\/?>/gi;
+
+    return content.replace(imgTagRegex, (match, attributes) => {
+      // Extract src attribute
+      const srcMatch = attributes.match(/src=["']([^"']+)["']/i);
+      if (!srcMatch) return match; // If no src, return original tag
+
+      const src = srcMatch[1];
+
+      // Extract alt attribute if present, otherwise use empty string
+      const altMatch = attributes.match(/alt=["']([^"']*)["']/i);
+      const alt = altMatch ? altMatch[1] : "";
+
+      // Convert to markdown image syntax: ![alt](url)
+      return `![${alt}](${src})`;
+    });
+  };
+
   const combinedContent = useMemo(() => {
     if (!source?.content) return "";
 
     const raw = source.content as unknown;
+    let content = "";
+
     if (Array.isArray(raw)) {
       const blocks = raw as Array<{
         id?: string | number;
         type?: "text" | "table";
         content?: string;
       }>;
-      return blocks.map((block) => block.content ?? "").join("\n\n");
+      content = blocks.map((block) => block.content ?? "").join("\n\n");
     } else if (typeof raw === "string") {
-      return raw;
+      content = raw;
     }
-    return "";
+
+    // Convert img tags to markdown syntax
+    return convertImgTagsToMarkdown(content);
   }, [source?.content]);
 
   // Highlight and scroll to chunk after Streamdown renders
@@ -195,58 +219,180 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
   }, [combinedContent, targetBlockContent]);
 
   return (
-    <div className="bg-card border-border/40 flex w-full flex-col overflow-hidden rounded-lg border shadow-sm lg:w-[420px] xl:w-[480px] 2xl:w-[560px]">
-      <div className="border-border/50 bg-background/60 flex h-14 items-center justify-between border-b px-5">
-        <span className="text-foreground text-sm font-semibold">Viewer</span>
-        {hasCitation && (
+    <div className="bg-card border-border/40 flex w-full flex-col overflow-hidden rounded-lg border shadow-sm lg:w-[500px] xl:w-[600px] 2xl:w-[720px]">
+      {hasCitation ? (
+        <div className="border-border/50 bg-background/50 flex h-14 items-center justify-between border-b px-5">
+          <div className="flex min-w-0 flex-1 items-center">
+            {isLoading ? (
+              <div className="bg-muted h-4 w-32 animate-pulse rounded" />
+            ) : (
+              <span className="text-foreground truncate text-sm font-semibold">
+                {source?.name || "Source"}
+              </span>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-foreground h-7 w-7"
+            className="text-muted-foreground hover:text-foreground h-7 w-7 shrink-0"
             onClick={onClear}
-            title="Clear viewer"
+            title="Close viewer"
           >
             ✕
           </Button>
-        )}
-      </div>
-
-      {!hasCitation ? (
-        <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center text-xs">
-          <p className="text-foreground text-sm font-medium">
-            No selection yet
-          </p>
-          <p className="leading-relaxed">
-            Select a citation in the chat to see the original source content
-            here.
-          </p>
         </div>
       ) : (
-        <Card className="bg-background/80 flex h-full flex-col rounded-none border-none shadow-none">
-          <CardHeader className="space-y-1 border-b px-4 py-3">
-            <CardTitle className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              Source content [{activeCitation.citationNumber}]
-            </CardTitle>
-          </CardHeader>
-          <CardContent
+        <div className="border-border/50 bg-background/50 flex h-14 items-center justify-between border-b px-5">
+          <span className="text-foreground text-sm font-semibold">Viewer</span>
+        </div>
+      )}
+
+      {!hasCitation ? (
+        <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-4 px-8 py-12 text-center">
+          <div className="bg-muted/50 flex h-12 w-12 items-center justify-center rounded-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-muted-foreground"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+          </div>
+          <div className="space-y-1">
+            <p className="text-foreground text-sm font-medium">
+              No selection yet
+            </p>
+            <p className="text-xs leading-relaxed">
+              Select a citation in the chat to see the original source content
+              here.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-background flex h-full flex-col">
+          <div
             ref={contentRef}
-            className="flex-1 overflow-auto px-4 py-3 text-sm [&_.highlighted-chunk]:rounded [&_.highlighted-chunk]:border [&_.highlighted-chunk]:border-yellow-400 [&_.highlighted-chunk]:bg-yellow-200 [&_.highlighted-chunk]:px-1 [&_.highlighted-chunk]:py-0.5 [&_.highlighted-chunk]:dark:border-yellow-700 [&_.highlighted-chunk]:dark:bg-yellow-900/30 [&.highlighted-chunk]:rounded [&.highlighted-chunk]:border [&.highlighted-chunk]:border-yellow-400 [&.highlighted-chunk]:bg-yellow-200 [&.highlighted-chunk]:px-1 [&.highlighted-chunk]:py-0.5 [&.highlighted-chunk]:dark:border-yellow-700 [&.highlighted-chunk]:dark:bg-yellow-900/30"
+            className="text-foreground/90 [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_li]:text-foreground/80 [&_blockquote]:border-border [&_blockquote]:text-muted-foreground flex-1 overflow-x-hidden overflow-y-auto px-6 py-5 text-sm leading-relaxed wrap-break-word **:max-w-full [&_.highlighted-chunk]:rounded-md [&_.highlighted-chunk]:border [&_.highlighted-chunk]:border-yellow-400 [&_.highlighted-chunk]:bg-yellow-200/80 [&_.highlighted-chunk]:px-1.5 [&_.highlighted-chunk]:py-0.5 [&_.highlighted-chunk]:dark:border-yellow-600 [&_.highlighted-chunk]:dark:bg-yellow-900/40 [&_blockquote]:border-l-4 [&_blockquote]:pl-4 [&_blockquote]:italic [&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-3 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:mb-3 [&_ol]:ml-4 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ul]:ml-4 [&_ul]:list-disc [&_ul]:space-y-1 [&.highlighted-chunk]:rounded-md [&.highlighted-chunk]:border [&.highlighted-chunk]:border-yellow-400 [&.highlighted-chunk]:bg-yellow-200/80 [&.highlighted-chunk]:px-1.5 [&.highlighted-chunk]:py-0.5 [&.highlighted-chunk]:dark:border-yellow-600 [&.highlighted-chunk]:dark:bg-yellow-900/40"
           >
             {isLoading ? (
-              <p className="text-muted-foreground text-xs">Loading source…</p>
+              <div className="text-muted-foreground flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <p className="text-sm">Loading source…</p>
+              </div>
             ) : error ? (
-              <p className="text-destructive text-xs">
-                Failed to load source content.
-              </p>
+              <div className="border-destructive/50 bg-destructive/10 rounded-lg border p-4">
+                <p className="text-destructive text-sm font-medium">
+                  Failed to load source content.
+                </p>
+              </div>
             ) : combinedContent ? (
-              <Streamdown>{combinedContent}</Streamdown>
+              <Streamdown
+                components={
+                  {
+                    img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+                      return (
+                        <img
+                          {...props}
+                          className="border-border/50 my-4 max-w-full rounded-lg border shadow-sm"
+                          loading="lazy"
+                          alt={props.alt || "Image"}
+                        />
+                      );
+                    },
+                    table: (props: React.HTMLAttributes<HTMLTableElement>) => {
+                      return (
+                        <div className="-mx-6 my-6 overflow-x-auto">
+                          <div className="inline-block min-w-full px-6">
+                            <table
+                              {...props}
+                              className="border-border/60 min-w-full border-collapse rounded-lg border shadow-sm"
+                            />
+                          </div>
+                        </div>
+                      );
+                    },
+                    thead: (
+                      props: React.HTMLAttributes<HTMLTableSectionElement>
+                    ) => {
+                      return (
+                        <thead
+                          {...props}
+                          className="bg-muted/80 border-border/60 border-b"
+                        />
+                      );
+                    },
+                    tbody: (
+                      props: React.HTMLAttributes<HTMLTableSectionElement>
+                    ) => {
+                      return <tbody {...props} />;
+                    },
+                    tr: (props: React.HTMLAttributes<HTMLTableRowElement>) => {
+                      return (
+                        <tr
+                          {...props}
+                          className="border-border/40 hover:bg-muted/30 even:bg-muted/20 border-b transition-colors"
+                        />
+                      );
+                    },
+                    th: (
+                      props: React.ThHTMLAttributes<HTMLTableCellElement>
+                    ) => {
+                      return (
+                        <th
+                          {...props}
+                          className="border-border/40 text-foreground/70 border-r px-4 py-3 text-left text-xs font-semibold tracking-wider uppercase last:border-r-0"
+                        />
+                      );
+                    },
+                    td: (
+                      props: React.TdHTMLAttributes<HTMLTableCellElement>
+                    ) => {
+                      return (
+                        <td
+                          {...props}
+                          className="border-border/40 text-foreground/80 border-r px-4 py-3 last:border-r-0"
+                        />
+                      );
+                    },
+                    pre: (props: React.HTMLAttributes<HTMLPreElement>) => {
+                      return (
+                        <pre
+                          {...props}
+                          className="border-border/50 bg-muted/50 my-4 overflow-x-auto rounded-lg border p-4 text-xs leading-relaxed"
+                        />
+                      );
+                    },
+                    code: (props: React.HTMLAttributes<HTMLElement>) => {
+                      return (
+                        <code
+                          {...props}
+                          className="bg-muted/70 text-foreground rounded-md px-1.5 py-0.5 font-mono text-xs"
+                        />
+                      );
+                    },
+                  } as unknown as Parameters<typeof Streamdown>[0]["components"]
+                }
+              >
+                {combinedContent}
+              </Streamdown>
             ) : (
               <p className="text-muted-foreground text-xs">
                 No content available for this source.
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
