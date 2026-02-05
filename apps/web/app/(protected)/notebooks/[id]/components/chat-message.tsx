@@ -3,7 +3,6 @@
 import React from "react";
 import { Bot, User } from "lucide-react";
 import { Streamdown } from "streamdown";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -95,21 +94,39 @@ const CitationButton = (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            type="button"
+          <span
             onClick={() => console.log("Navigate to source:", sourceId)}
-            variant="outline"
-            size="icon"
-            className="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-blue-300 bg-blue-100 text-xs font-bold text-blue-600 hover:bg-blue-200"
+            className={cn(
+              "relative inline-flex cursor-pointer items-baseline",
+              "text-sm leading-none font-semibold",
+              "text-blue-600 underline decoration-blue-500/60 decoration-dotted underline-offset-2",
+              "transition-all duration-200",
+              "hover:text-blue-700 hover:decoration-blue-600",
+              "active:scale-95",
+              "focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-blue-400/40 focus-visible:ring-offset-1 focus-visible:outline-none",
+              "dark:text-blue-400 dark:decoration-blue-400/70",
+              "dark:hover:text-blue-300 dark:hover:decoration-blue-400",
+              "mr-0.5 ml-0.5"
+            )}
+            style={{
+              verticalAlign: "super",
+              fontSize: "0.9em",
+            }}
           >
             {children}
-          </Button>
+          </span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="w-64 p-3 text-xs">
-          <p className="mb-1 font-semibold">Summary:</p>
-          <p className="text-muted-foreground mb-2">{summary}</p>
-          <div className="border-border text-muted-foreground border-t pt-2 italic">
-            &quot;{exactText.slice(0, 80)}...&quot;
+        <TooltipContent
+          side="top"
+          className="max-w-xs p-4 text-xs shadow-lg"
+          sideOffset={8}
+        >
+          <div className="space-y-2">
+            <p className="text-background font-semibold">Summary:</p>
+            <p className="text-background/80 leading-relaxed">{summary}</p>
+            <div className="border-background/20 text-background/70 border-t pt-2 italic">
+              &quot;{exactText.slice(0, 80)}...&quot;
+            </div>
           </div>
         </TooltipContent>
       </Tooltip>

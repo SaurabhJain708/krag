@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -37,6 +37,8 @@ export function ChatPane({
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const hasSources = sourceCount > 0;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
 
@@ -83,6 +85,22 @@ export function ChatPane({
     }
   };
 
+  // Auto-scroll to bottom when messages change or loading state changes
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      } else if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop =
+          messagesContainerRef.current.scrollHeight;
+      }
+    };
+
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
+  }, [messages, isLoading, isLoadingMessages]);
+
   return (
     <div className="bg-card border-border/40 relative flex flex-1 flex-col overflow-hidden rounded-lg border shadow-sm">
       <button
@@ -110,7 +128,10 @@ export function ChatPane({
       {hasSources || messages.length > 0 || isLoadingMessages ? (
         <>
           {/* Messages Area */}
-          <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
+          <div
+            ref={messagesContainerRef}
+            className="flex flex-1 flex-col overflow-y-auto px-4 py-6"
+          >
             {isLoadingMessages ? (
               <div className="flex flex-1 items-center justify-center py-12">
                 <div className="flex items-center gap-2">
@@ -161,6 +182,7 @@ export function ChatPane({
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             )}
           </div>
