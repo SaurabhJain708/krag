@@ -332,7 +332,7 @@ class Qwen2_5_7BAWQ:
             dtype="half",
             gpu_memory_utilization=0.90,
             max_model_len=16384,
-            enforce_eager=False,
+            enforce_eager=True,
             trust_remote_code=False,  # Keep this False!
         )
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)

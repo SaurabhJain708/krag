@@ -4,10 +4,9 @@ from pydantic import BaseModel, Field
 class Citation(BaseModel):
     """Represents a single citation reference with source and chunk information.
 
-    This model stores the extracted text snippet along with metadata about where
-    it originated from, including the source document ID and the specific chunk ID
-    within that source. The citation number corresponds to the [CITATION: N] markers
-    embedded in the main text.
+    This model stores metadata about where a citation originated from, including
+    the source document ID and the specific chunk ID within that source. The citation
+    number corresponds to the [CITATION: N] markers embedded in the main text.
 
     Chunk content in the retrieval pipeline may be wrapped with internal IDs, for
     example: `<<<CHUNK_0>>>...chunk text...<<<CHUNK_0>>>`. These wrapper IDs are
@@ -40,33 +39,32 @@ class Citation(BaseModel):
             "new indices or IDs."
         ),
     )
-    exact_text: str = Field(
-        ...,
-        description="The exact text content from the source chunk as it appears "
-        "in the original document. This is the verbatim text without any modifications, "
-        "paraphrasing, or summarization.",
-    )
     brief_summary: str = Field(
         ...,
         description="A concise summary of the citation content. This provides a "
         "brief overview of the key information or main point conveyed by the cited "
-        "text, typically in one to two sentences.",
+        "text, typically in one to two sentences. "
+        r"CRITICAL: Do NOT use backslashes (\) or LaTeX syntax. Use plain text only.",
     )
 
 
 class TextWithCitations(BaseModel):
-    """Represents text content with embedded citations and their detailed references.
+    r"""Represents text content with embedded citations and their detailed references.
 
     This model is used to structure AI-generated responses that include citations.
     The main text contains [CITATION: N] markers that reference entries in the
     citations array, allowing for traceable and verifiable AI responses.
+
+    IMPORTANT: All text fields must NOT contain backslashes (\) or LaTeX syntax.
+    Use plain text or simple markdown formatting only.
     """
 
     text: str = Field(
         ...,
         description="The main text content with embedded citation markers in the "
         "format [CITATION: N] where N is the citation number. These markers indicate "
-        "where in the text a citation should be referenced.",
+        "where in the text a citation should be referenced. "
+        r"CRITICAL: Do NOT use backslashes (\) or LaTeX syntax. Use plain text or simple markdown only.",
     )
     citations: list[Citation] = Field(
         ...,

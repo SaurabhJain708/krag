@@ -44,7 +44,6 @@ function injectImageSrcIntoContent(
 ): string {
   // Find all id={...} patterns first, then work backwards/forwards to get full tag
   const idRegex = /\bid\s*=\s*\{([a-f0-9-]+)\}/gi;
-  let matchCount = 0;
   const replacements: Array<{
     start: number;
     end: number;
@@ -120,14 +119,6 @@ function injectImageSrcIntoContent(
       const normalizedId = normalizeImageId(id);
       const url = imageUrls[normalizedId] ?? imageUrls[id];
 
-      matchCount++;
-      console.log(`[Image ${matchCount}]`, {
-        id,
-        normalizedId,
-        url: url ? "✓" : "✗",
-        tagSample: fullTag.substring(0, 200),
-      });
-
       if (url && !fullTag.includes("src=")) {
         // Insert src after id={...}
         const beforeId = fullTag.substring(0, idStart - tagStart);
@@ -139,7 +130,6 @@ function injectImageSrcIntoContent(
           end: tagEnd,
           replacement: newTag,
         });
-        console.log(`  → Will add src`);
       }
     }
   }
@@ -150,9 +140,6 @@ function injectImageSrcIntoContent(
     result = result.substring(0, start) + replacement + result.substring(end);
   }
 
-  console.log(
-    `Total img tags found: ${matchCount}, replacements: ${replacements.length}`
-  );
   return result;
 }
 
@@ -180,29 +167,19 @@ export const getSource = protectedProcedure
       imageSignedUrls = await getSignedUrlsMap(source.image_paths);
     }
 
-    console.log("imageSignedUrls", imageSignedUrls);
-
     let contentWithImages: unknown = source.content;
     if (
       source.content &&
       Array.isArray(source.content) &&
       Object.keys(imageSignedUrls).length > 0
     ) {
-      console.log(
-        `Processing ${(source.content as Array<unknown>).length} content blocks`
-      );
       contentWithImages = (
         source.content as Array<{
           type: "text" | "table";
           content: string;
           [key: string]: unknown;
         }>
-      ).map((block, index) => {
-        const hasImgTag = block.content.includes("<img");
-        if (hasImgTag) {
-          console.log(`Block ${index} (type: ${block.type}) contains img tags`);
-          console.log(`Sample content: ${block.content.substring(0, 200)}...`);
-        }
+      ).map((block) => {
         return {
           ...block,
           content: injectImageSrcIntoContent(block.content, imageSignedUrls),

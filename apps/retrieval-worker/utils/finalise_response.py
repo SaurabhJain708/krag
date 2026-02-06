@@ -35,16 +35,12 @@ def replace_with_citation(text_with_citations: TextWithCitations) -> str:
         if not re.search(pattern, final_response):
             continue  # Skip citations that don't appear in the text
 
-        exact_text_escaped = citation.exact_text.replace('"', "&quot;").replace(
-            "'", "&apos;"
-        )
         summary_escaped = citation.brief_summary.replace('"', "&quot;").replace(
             "'", "&apos;"
         )
 
         def replace_with_citation(
             _match,
-            exact_text=exact_text_escaped,
             source_id=citation.sourceId,
             chunk_id=citation.chunkId,
             summary=summary_escaped,
@@ -52,7 +48,7 @@ def replace_with_citation(text_with_citations: TextWithCitations) -> str:
             citation_uuid = str(uuid.uuid4())
             # Use span with data attributes instead of custom citation tag
             # This works with Streamdown's rehype-sanitize which strips custom HTML tags
-            return f'<span data-citation="true" data-exact-text="{exact_text}" data-source-id="{source_id}" data-chunk-id="{chunk_id}" data-summary="{summary}">[{citation_uuid}]</span>'
+            return f'<span data-citation="true" data-source-id="{source_id}" data-chunk-id="{chunk_id}" data-summary="{summary}">[{citation_uuid}]</span>'
 
         final_response = re.sub(pattern, replace_with_citation, final_response)
 

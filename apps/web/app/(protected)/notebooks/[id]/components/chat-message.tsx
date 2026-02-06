@@ -12,7 +12,6 @@ import {
 import { cn } from "@/lib/utils";
 
 interface CitationData {
-  exactText: string;
   sourceId: string;
   chunkId: string;
   summary: string;
@@ -56,13 +55,11 @@ const parseCitationFromContent = (content: string, citationNumber: string) => {
       .replace(/&gt;/g, ">");
   };
 
-  const exactText = decodeHtml(getAttr("data-exact-text"));
   const sourceId = decodeHtml(getAttr("data-source-id"));
   const chunkId = decodeHtml(getAttr("data-chunk-id"));
   const summary = decodeHtml(getAttr("data-summary"));
 
   return {
-    exactText,
     sourceId,
     chunkId,
     summary,
@@ -98,7 +95,7 @@ const CitationButton = (
     return <span {...props} />;
   }
 
-  const { exactText, summary } = citationData;
+  const { summary } = citationData;
   const children = props.children;
   const { onCitationClick } = props;
 
@@ -140,9 +137,6 @@ const CitationButton = (
           <div className="space-y-2">
             <p className="text-background font-semibold">Summary:</p>
             <p className="text-background/80 leading-relaxed">{summary}</p>
-            <div className="border-background/20 text-background/70 border-t pt-2 italic">
-              &quot;{exactText.slice(0, 80)}...&quot;
-            </div>
           </div>
         </TooltipContent>
       </Tooltip>

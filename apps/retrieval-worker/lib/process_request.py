@@ -40,9 +40,7 @@ async def process_request(
     print(
         f"Extracting content for parent chunks: {parent_chunks} and query: {prepared_question.optimized_query}"
     )
-    extracted_content = await final_extraction(
-        parent_chunks, prepared_question.optimized_query
-    )
+    extracted_content = await final_extraction(parent_chunks, content)
     print(f"Extracted content: {extracted_content}")
 
     # 6. Finalise the response

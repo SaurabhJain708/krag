@@ -111,37 +111,105 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
     const highlightAndScroll = () => {
       if (!container) return;
 
+      // Check if the target block contains images
+      const hasImages = targetBlockContent.includes("<img");
+
       // Find the text node or element containing the target content
       // We'll search for a portion of the text to find the right element
       const searchText = targetBlockContent
         .substring(0, Math.min(50, targetBlockContent.length))
+        .trim()
+        .replace(/<img[^>]*>/gi, "") // Remove img tags from search text
+        .replace(/\s+/g, " ") // Normalize whitespace
         .trim();
 
-      if (!searchText) return;
-
-      // Walk through all text nodes to find the one containing our content
-      const walker = document.createTreeWalker(
-        container,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-
-      let textNode: Node | null = null;
-      while ((textNode = walker.nextNode())) {
-        if (textNode.textContent?.includes(searchText)) {
-          // Found the text node, get its parent element
-          let parent = textNode.parentElement;
-          while (parent && parent !== container) {
-            // Check if this parent contains the full target content
+      // If we have images, try to find them first
+      if (hasImages) {
+        const images = container.querySelectorAll("img");
+        images.forEach((img) => {
+          // Check if this image is near text content that matches
+          let currentElement: Element | null = img.parentElement;
+          while (currentElement && currentElement !== container) {
+            const elementText = currentElement.textContent || "";
+            // Check if this element contains text from the target block
+            if (searchText && elementText.includes(searchText)) {
+              highlightedElement = currentElement;
+              return;
+            }
+            // If no text match but we're looking at a paragraph or div that contains the image
+            // and it's likely part of the chunk, highlight it
             if (
-              parent.textContent?.includes(targetBlockContent.substring(0, 100))
+              (currentElement.tagName === "P" ||
+                currentElement.tagName === "DIV") &&
+              currentElement.contains(img)
             ) {
-              highlightedElement = parent;
+              // Check siblings or nearby elements for text match
+              const nearbyText = Array.from(
+                currentElement.parentElement?.children || []
+              )
+                .map((el) => el.textContent || "")
+                .join(" ");
+              if (searchText && nearbyText.includes(searchText)) {
+                highlightedElement = currentElement.parentElement;
+                return;
+              }
+            }
+            currentElement = currentElement.parentElement;
+          }
+        });
+      }
+
+      // Also search through text nodes (original logic)
+      if (!highlightedElement && searchText) {
+        const walker = document.createTreeWalker(
+          container,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+
+        let textNode: Node | null = null;
+        while ((textNode = walker.nextNode())) {
+          if (textNode.textContent?.includes(searchText)) {
+            // Found the text node, get its parent element
+            let parent = textNode.parentElement;
+            while (parent && parent !== container) {
+              // Check if this parent contains the full target content
+              const parentText = parent.textContent || "";
+              if (
+                parentText.includes(
+                  targetBlockContent
+                    .substring(0, 100)
+                    .replace(/<img[^>]*>/gi, "")
+                    .trim()
+                )
+              ) {
+                highlightedElement = parent;
+                break;
+              }
+              parent = parent.parentElement;
+            }
+            if (highlightedElement) break;
+          }
+        }
+      }
+
+      // If we still haven't found anything and there are images,
+      // try to find the container that includes images from the chunk
+      if (!highlightedElement && hasImages) {
+        const images = container.querySelectorAll("img");
+        if (images.length > 0 && images[0]) {
+          // Find the common parent of images that might be in the chunk
+          const firstImage = images[0];
+          let currentElement: Element | null = firstImage.parentElement;
+          while (currentElement && currentElement !== container) {
+            // If this element contains multiple images or is a significant container, use it
+            const imageCount = currentElement.querySelectorAll("img").length;
+            if (imageCount > 0 && currentElement.textContent) {
+              highlightedElement = currentElement;
               break;
             }
-            parent = parent.parentElement;
+            currentElement = currentElement.parentElement;
           }
-          if (highlightedElement) break;
         }
       }
 
@@ -149,11 +217,6 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
       if (highlightedElement) {
         highlightedElement.classList.add("highlighted-chunk");
         highlightedElement.id = "highlighted-chunk";
-        console.log(
-          "Highlighted element found:",
-          highlightedElement.tagName,
-          highlightedElement.className
-        );
       }
 
       // Scroll to the highlighted element
@@ -171,12 +234,6 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
           top: Math.max(0, scrollTop),
           behavior: "smooth",
         });
-        console.log("Scrolled to highlighted element");
-      } else {
-        console.log(
-          "Could not find element with content:",
-          searchText.substring(0, 30)
-        );
       }
     };
 

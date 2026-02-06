@@ -34,17 +34,6 @@ export const uploadFile = protectedProcedure
       userId,
     });
 
-    const { data: signedUrlData } = await supabase.storage
-      .from("files")
-      .createSignedUrl(data.path, 3600);
-    const signedUrl = signedUrlData?.signedUrl || null;
-    if (!signedUrl) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to get signed URL",
-      });
-    }
-
     await redis.lpush(
       "file_processing_queue",
       JSON.stringify({

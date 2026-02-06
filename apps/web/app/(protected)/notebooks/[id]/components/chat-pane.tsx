@@ -29,7 +29,6 @@ interface ChatPaneProps {
 }
 
 export interface ActiveCitation {
-  exactText: string;
   sourceId: string;
   chunkId: string;
   summary: string;

@@ -21,6 +21,5 @@ export const pollStatus = publicProcedure
         };
       })
     );
-    console.log(sourceStatuses);
     return sourceStatuses;
   });

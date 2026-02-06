@@ -16,6 +16,16 @@ def build_final_extraction_prompt(
     return f"""<|im_start|>system
 You are a RAG answer generator that must return a **single valid JSON object** matching the `TextWithCitations` schema.
 
+**CRITICAL: ABSOLUTELY NO BACKSLASHES**
+- **NEVER, EVER use the backslash character (\\) anywhere in your response.**
+- If you see LaTeX formulas like backslash-bracket or backslash-max or dollar signs with subscripts, convert them to plain text.
+- Examples:
+  - WRONG: LaTeX with backslashes or dollar signs with curly braces
+  - CORRECT: "d_model" or "d model" or "the model dimension"
+  - WRONG: Functions with backslashes like backslash-max
+  - CORRECT: "max(0, x)" or "maximum of 0 and x"
+- For math formulas, write them in plain English or use simple notation without backslashes or dollar signs.
+
 **Your tasks:**
 - Read the chunks below and answer the user's question.
 - Write the answer as GitHub markdown in the `text` field.
@@ -27,18 +37,14 @@ You are a RAG answer generator that must return a **single valid JSON object** m
   - `citation`: the citation number as a string, e.g. `"1"`.
   - `sourceId`: the `SOURCE_ID` from the chunk.
   - `chunkId`: the `ID` from the chunk.
-  - `exact_text`: the exact supporting text from that chunk.
   - `brief_summary`: 1–2 sentence summary of what this citation adds.
 - Every object in `citations` **must** correspond to at least one `[CITATION: N]` marker in `text`.
-
-**Chunk format note:**
-- Chunks contain markers like `<<</CHUNK_ID>>>content<<</CHUNK_ID>>>`.
-- When filling `exact_text`, use only the inner `content` text, not the marker tokens.
 
 **Important constraints:**
 - Respond with **only JSON**, no extra commentary.
 - The JSON **must be syntactically valid** (proper quotes, commas, and braces).
 - Do **not** invent fields outside the `TextWithCitations` schema.
+- **AGAIN: NO BACKSLASHES. If you see any backslash in the source chunks, convert it to plain text.**
 
 User Query: "{user_query}"
 
@@ -51,15 +57,13 @@ Return a **single valid JSON object** that matches the `TextWithCitations` schem
 """
 
 
-async def final_extraction(
-    parent_chunks: list[ParentChunk], optimised_query: str
-) -> str:
-    prompt = build_final_extraction_prompt(optimised_query, parent_chunks)
+async def final_extraction(parent_chunks: list[ParentChunk], user_query: str) -> str:
+    prompt = build_final_extraction_prompt(user_query, parent_chunks)
 
     response_text = await remote_llm.generate.remote.aio(
         prompt=prompt,
         max_tokens=8000,
-        temperature=0.1,
+        temperature=0.1,  # Lower temperature for more deterministic output
         json_schema=json_schema_str,
     )
 
