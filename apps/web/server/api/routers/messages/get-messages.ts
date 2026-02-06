@@ -13,7 +13,11 @@ export const GetMessages = protectedProcedure
         userId,
       },
       include: {
-        messages: true,
+        messages: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
       },
     });
     if (!notebook) {

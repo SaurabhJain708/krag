@@ -120,15 +120,19 @@ function injectImageSrcIntoContent(
       const url = imageUrls[normalizedId] ?? imageUrls[id];
 
       if (url && !fullTag.includes("src=")) {
-        // Insert src after id={...}
-        const beforeId = fullTag.substring(0, idStart - tagStart);
-        const idPart = fullTag.substring(idStart - tagStart, idEnd - tagStart);
-        const afterId = fullTag.substring(idEnd - tagStart);
-        const newTag = `${beforeId}${idPart} src="${url}"${afterId}`;
+        // Extract alt attribute from the tag if present
+        // More robust to handle various formats: alt="text", alt='text', alt=text
+        const altMatch =
+          fullTag.match(/alt\s*=\s*["']([^"']*)["']/i) ||
+          fullTag.match(/alt\s*=\s*([^\s>]+)/i);
+        const alt = altMatch ? altMatch[1] : "";
+
+        // Convert directly to markdown image syntax instead of HTML tag
+        const markdownImage = `![${alt}](${url})`;
         replacements.push({
           start: tagStart,
           end: tagEnd,
-          replacement: newTag,
+          replacement: markdownImage,
         });
       }
     }
@@ -180,6 +184,7 @@ export const getSource = protectedProcedure
           [key: string]: unknown;
         }>
       ).map((block) => {
+        // Inject src attributes and convert to markdown in one step
         return {
           ...block,
           content: injectImageSrcIntoContent(block.content, imageSignedUrls),

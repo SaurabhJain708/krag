@@ -23,257 +23,216 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
     { sourceId: activeCitation?.sourceId ?? "" },
     {
       enabled: !!activeCitation?.sourceId,
+      retry: false, // Don't retry on 404 errors
+      // Treat 404 as a non-error case (source might have been deleted)
+      throwOnError: false,
     }
   );
 
-  // Store the target block content for highlighting after render
-  const targetBlockContent = useMemo(() => {
-    if (!source?.content || !activeCitation?.chunkId) return null;
+  // Keep blocks separate so we can render them with data-chunk-id attributes
+  const blocks = useMemo(() => {
+    if (!source?.content) return [];
 
     const raw = source.content as unknown;
     if (Array.isArray(raw)) {
-      const blocks = raw as Array<{
+      return raw as Array<{
         id?: string | number;
         type?: "text" | "table";
         content?: string;
       }>;
-      const targetChunkId =
-        typeof activeCitation.chunkId === "string"
-          ? parseInt(activeCitation.chunkId, 10)
-          : Number(activeCitation.chunkId);
-
-      const matchingBlock = blocks.find((block) => {
-        const blockIdNum =
-          block.id !== undefined
-            ? typeof block.id === "string"
-              ? parseInt(block.id, 10)
-              : Number(block.id)
-            : null;
-        return blockIdNum !== null && blockIdNum === targetChunkId;
-      });
-
-      return matchingBlock?.content ?? null;
     }
-    return null;
-  }, [source?.content, activeCitation?.chunkId]);
-
-  // Convert img tags to markdown image syntax for Streamdown
-  const convertImgTagsToMarkdown = (content: string): string => {
-    // Match img tags with src attribute: <img id={...} src="..." /> or <img src="..." id={...} />
-    const imgTagRegex = /<img\s+([^>]*?)\s*\/?>/gi;
-
-    return content.replace(imgTagRegex, (match, attributes) => {
-      // Extract src attribute
-      const srcMatch = attributes.match(/src=["']([^"']+)["']/i);
-      if (!srcMatch) return match; // If no src, return original tag
-
-      const src = srcMatch[1];
-
-      // Extract alt attribute if present, otherwise use empty string
-      const altMatch = attributes.match(/alt=["']([^"']*)["']/i);
-      const alt = altMatch ? altMatch[1] : "";
-
-      // Convert to markdown image syntax: ![alt](url)
-      return `![${alt}](${src})`;
-    });
-  };
-
-  const combinedContent = useMemo(() => {
-    if (!source?.content) return "";
-
-    const raw = source.content as unknown;
-    let content = "";
-
-    if (Array.isArray(raw)) {
-      const blocks = raw as Array<{
-        id?: string | number;
-        type?: "text" | "table";
-        content?: string;
-      }>;
-      content = blocks.map((block) => block.content ?? "").join("\n\n");
-    } else if (typeof raw === "string") {
-      content = raw;
-    }
-
-    // Convert img tags to markdown syntax
-    return convertImgTagsToMarkdown(content);
+    return [];
   }, [source?.content]);
+
+  // Fallback for string content (shouldn't happen with new structure, but kept for safety)
+  const combinedContent = useMemo(() => {
+    if (!source?.content || Array.isArray(source.content)) return "";
+    return String(source.content);
+  }, [source?.content]);
+
+  // Shared Streamdown components to avoid duplication
+  const streamdownComponents = {
+    img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+      return (
+        <img
+          {...props}
+          className="border-border/50 my-4 max-w-full rounded-lg border shadow-sm"
+          loading="lazy"
+          alt={props.alt || "Image"}
+        />
+      );
+    },
+    table: (props: React.HTMLAttributes<HTMLTableElement>) => {
+      return (
+        <div className="-mx-6 my-6 overflow-x-auto">
+          <div className="inline-block min-w-full px-6">
+            <table
+              {...props}
+              className="border-border/60 min-w-full border-collapse rounded-lg border shadow-sm"
+            />
+          </div>
+        </div>
+      );
+    },
+    thead: (props: React.HTMLAttributes<HTMLTableSectionElement>) => {
+      return (
+        <thead {...props} className="bg-muted/80 border-border/60 border-b" />
+      );
+    },
+    tbody: (props: React.HTMLAttributes<HTMLTableSectionElement>) => {
+      return <tbody {...props} />;
+    },
+    tr: (props: React.HTMLAttributes<HTMLTableRowElement>) => {
+      return (
+        <tr
+          {...props}
+          className="border-border/40 hover:bg-muted/30 even:bg-muted/20 border-b transition-colors"
+        />
+      );
+    },
+    th: (props: React.ThHTMLAttributes<HTMLTableCellElement>) => {
+      return (
+        <th
+          {...props}
+          className="border-border/40 text-foreground/70 border-r px-4 py-3 text-left text-xs font-semibold tracking-wider uppercase last:border-r-0"
+        />
+      );
+    },
+    td: (props: React.TdHTMLAttributes<HTMLTableCellElement>) => {
+      return (
+        <td
+          {...props}
+          className="border-border/40 text-foreground/80 border-r px-4 py-3 last:border-r-0"
+        />
+      );
+    },
+    pre: (props: React.HTMLAttributes<HTMLPreElement>) => {
+      return (
+        <pre
+          {...props}
+          className="border-border/50 bg-muted/50 my-4 overflow-x-auto rounded-lg border p-4 text-xs leading-relaxed"
+        />
+      );
+    },
+    code: (props: React.HTMLAttributes<HTMLElement>) => {
+      return (
+        <code
+          {...props}
+          className="bg-muted/70 text-foreground rounded-md px-1.5 py-0.5 font-mono text-xs"
+        />
+      );
+    },
+  } as unknown as Parameters<typeof Streamdown>[0]["components"];
 
   // Highlight and scroll to chunk after Streamdown renders
   useEffect(() => {
-    if (!combinedContent || !targetBlockContent || !contentRef.current) {
+    if (!activeCitation?.chunkId || !contentRef.current) {
       return;
     }
 
     const container = contentRef.current;
-    let highlightedElement: Element | null = null;
+    let hasHighlighted = false;
 
-    const highlightAndScroll = () => {
-      if (!container) return;
-
-      // Check if the target block contains images
-      const hasImages = targetBlockContent.includes("<img");
-
-      // Find the text node or element containing the target content
-      // We'll search for a portion of the text to find the right element
-      const searchText = targetBlockContent
-        .substring(0, Math.min(50, targetBlockContent.length))
-        .trim()
-        .replace(/<img[^>]*>/gi, "") // Remove img tags from search text
-        .replace(/\s+/g, " ") // Normalize whitespace
-        .trim();
-
-      // If we have images, try to find them first
-      if (hasImages) {
-        const images = container.querySelectorAll("img");
-        images.forEach((img) => {
-          // Check if this image is near text content that matches
-          let currentElement: Element | null = img.parentElement;
-          while (currentElement && currentElement !== container) {
-            const elementText = currentElement.textContent || "";
-            // Check if this element contains text from the target block
-            if (searchText && elementText.includes(searchText)) {
-              highlightedElement = currentElement;
-              return;
-            }
-            // If no text match but we're looking at a paragraph or div that contains the image
-            // and it's likely part of the chunk, highlight it
-            if (
-              (currentElement.tagName === "P" ||
-                currentElement.tagName === "DIV") &&
-              currentElement.contains(img)
-            ) {
-              // Check siblings or nearby elements for text match
-              const nearbyText = Array.from(
-                currentElement.parentElement?.children || []
-              )
-                .map((el) => el.textContent || "")
-                .join(" ");
-              if (searchText && nearbyText.includes(searchText)) {
-                highlightedElement = currentElement.parentElement;
-                return;
-              }
-            }
-            currentElement = currentElement.parentElement;
-          }
-        });
-      }
-
-      // Also search through text nodes (original logic)
-      if (!highlightedElement && searchText) {
-        const walker = document.createTreeWalker(
-          container,
-          NodeFilter.SHOW_TEXT,
-          null
-        );
-
-        let textNode: Node | null = null;
-        while ((textNode = walker.nextNode())) {
-          if (textNode.textContent?.includes(searchText)) {
-            // Found the text node, get its parent element
-            let parent = textNode.parentElement;
-            while (parent && parent !== container) {
-              // Check if this parent contains the full target content
-              const parentText = parent.textContent || "";
-              if (
-                parentText.includes(
-                  targetBlockContent
-                    .substring(0, 100)
-                    .replace(/<img[^>]*>/gi, "")
-                    .trim()
-                )
-              ) {
-                highlightedElement = parent;
-                break;
-              }
-              parent = parent.parentElement;
-            }
-            if (highlightedElement) break;
-          }
-        }
-      }
-
-      // If we still haven't found anything and there are images,
-      // try to find the container that includes images from the chunk
-      if (!highlightedElement && hasImages) {
-        const images = container.querySelectorAll("img");
-        if (images.length > 0 && images[0]) {
-          // Find the common parent of images that might be in the chunk
-          const firstImage = images[0];
-          let currentElement: Element | null = firstImage.parentElement;
-          while (currentElement && currentElement !== container) {
-            // If this element contains multiple images or is a significant container, use it
-            const imageCount = currentElement.querySelectorAll("img").length;
-            if (imageCount > 0 && currentElement.textContent) {
-              highlightedElement = currentElement;
-              break;
-            }
-            currentElement = currentElement.parentElement;
-          }
-        }
-      }
-
-      // If we found an element, add highlighting class directly
-      if (highlightedElement) {
-        highlightedElement.classList.add("highlighted-chunk");
-        highlightedElement.id = "highlighted-chunk";
-      }
-
-      // Scroll to the highlighted element
-      if (highlightedElement) {
-        const containerRect = container.getBoundingClientRect();
-        const elementRect = highlightedElement.getBoundingClientRect();
-        const scrollTop =
-          container.scrollTop +
-          elementRect.top -
-          containerRect.top -
-          containerRect.height / 2 +
-          elementRect.height / 2;
-
-        container.scrollTo({
-          top: Math.max(0, scrollTop),
-          behavior: "smooth",
-        });
-      }
-    };
-
-    // Use MutationObserver to wait for Streamdown to finish rendering
-    const observer = new MutationObserver((mutations, obs) => {
-      // Check if content has been added
-      if (container.children.length > 0) {
-        // Try to highlight after a short delay
-        setTimeout(() => {
-          highlightAndScroll();
-          obs.disconnect();
-        }, 100);
-      }
-    });
-
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-    });
-
-    // Also try after delays as fallback
-    const timers = [200, 500, 1000].map((delay) =>
-      setTimeout(() => {
-        if (!highlightedElement) {
-          highlightAndScroll();
-        }
-      }, delay)
-    );
-
-    return () => {
-      observer.disconnect();
-      timers.forEach((timer) => clearTimeout(timer));
-      // Clean up any added highlights
+    // Clean up previous highlights
+    const cleanup = () => {
       const existing = container.querySelector(".highlighted-chunk");
       if (existing) {
         existing.classList.remove("highlighted-chunk");
         existing.removeAttribute("id");
       }
     };
-  }, [combinedContent, targetBlockContent]);
+
+    const highlightAndScroll = () => {
+      if (!container || hasHighlighted) return;
+
+      // Clean up any previous highlights first
+      cleanup();
+
+      // Get the chunk ID as a string (for data attribute matching)
+      const targetChunkId = String(activeCitation.chunkId);
+
+      // Directly find the element with the matching data-chunk-id attribute
+      const highlightedElement = container.querySelector(
+        `[data-chunk-id="${targetChunkId}"]`
+      ) as HTMLElement | null;
+
+      // Apply highlighting and scroll
+      if (highlightedElement) {
+        highlightedElement.classList.add("highlighted-chunk");
+        highlightedElement.id = "highlighted-chunk";
+        hasHighlighted = true;
+
+        // Scroll to the highlighted element
+        setTimeout(() => {
+          const containerRect = container.getBoundingClientRect();
+          const elementRect = highlightedElement.getBoundingClientRect();
+
+          // Calculate scroll position to center the element
+          const scrollTop =
+            container.scrollTop +
+            elementRect.top -
+            containerRect.top -
+            containerRect.height / 2 +
+            elementRect.height / 2;
+
+          container.scrollTo({
+            top: Math.max(0, scrollTop),
+            behavior: "smooth",
+          });
+        }, 50);
+      }
+    };
+
+    // Use MutationObserver to wait for Streamdown to finish rendering
+    let observer: MutationObserver | null = null;
+    let observerTimeout: NodeJS.Timeout | null = null;
+
+    const startObserver = () => {
+      if (observer) return;
+
+      observer = new MutationObserver(() => {
+        // Clear any existing timeout
+        if (observerTimeout) {
+          clearTimeout(observerTimeout);
+        }
+
+        // Wait a bit for Streamdown to finish rendering
+        observerTimeout = setTimeout(() => {
+          if (!hasHighlighted && container.children.length > 0) {
+            highlightAndScroll();
+          }
+        }, 150);
+      });
+
+      observer.observe(container, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    };
+
+    startObserver();
+
+    // Also try after delays as fallback
+    const timers = [300, 600, 1200, 2000].map((delay) =>
+      setTimeout(() => {
+        if (!hasHighlighted) {
+          highlightAndScroll();
+        }
+      }, delay)
+    );
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      }
+      if (observerTimeout) {
+        clearTimeout(observerTimeout);
+      }
+      timers.forEach((timer) => clearTimeout(timer));
+      cleanup();
+    };
+  }, [activeCitation?.chunkId]);
 
   return (
     <div className="bg-card border-border/40 flex w-full flex-col overflow-hidden rounded-lg border shadow-sm lg:w-[500px] xl:w-[600px] 2xl:w-[720px]">
@@ -350,97 +309,35 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
             ) : error ? (
               <div className="border-destructive/50 bg-destructive/10 rounded-lg border p-4">
                 <p className="text-destructive text-sm font-medium">
-                  Failed to load source content.
+                  Source not found
+                </p>
+                <p className="text-destructive/80 mt-1 text-xs">
+                  The source referenced in this citation may have been deleted
+                  or is no longer accessible.
                 </p>
               </div>
+            ) : blocks.length > 0 ? (
+              <>
+                {blocks.map((block, index) => {
+                  const chunkId =
+                    block.id !== undefined ? String(block.id) : undefined;
+                  const blockContent = block.content ?? "";
+
+                  return (
+                    <div
+                      key={index}
+                      data-chunk-id={chunkId}
+                      className="chunk-block"
+                    >
+                      <Streamdown components={streamdownComponents}>
+                        {blockContent}
+                      </Streamdown>
+                    </div>
+                  );
+                })}
+              </>
             ) : combinedContent ? (
-              <Streamdown
-                components={
-                  {
-                    img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
-                      return (
-                        <img
-                          {...props}
-                          className="border-border/50 my-4 max-w-full rounded-lg border shadow-sm"
-                          loading="lazy"
-                          alt={props.alt || "Image"}
-                        />
-                      );
-                    },
-                    table: (props: React.HTMLAttributes<HTMLTableElement>) => {
-                      return (
-                        <div className="-mx-6 my-6 overflow-x-auto">
-                          <div className="inline-block min-w-full px-6">
-                            <table
-                              {...props}
-                              className="border-border/60 min-w-full border-collapse rounded-lg border shadow-sm"
-                            />
-                          </div>
-                        </div>
-                      );
-                    },
-                    thead: (
-                      props: React.HTMLAttributes<HTMLTableSectionElement>
-                    ) => {
-                      return (
-                        <thead
-                          {...props}
-                          className="bg-muted/80 border-border/60 border-b"
-                        />
-                      );
-                    },
-                    tbody: (
-                      props: React.HTMLAttributes<HTMLTableSectionElement>
-                    ) => {
-                      return <tbody {...props} />;
-                    },
-                    tr: (props: React.HTMLAttributes<HTMLTableRowElement>) => {
-                      return (
-                        <tr
-                          {...props}
-                          className="border-border/40 hover:bg-muted/30 even:bg-muted/20 border-b transition-colors"
-                        />
-                      );
-                    },
-                    th: (
-                      props: React.ThHTMLAttributes<HTMLTableCellElement>
-                    ) => {
-                      return (
-                        <th
-                          {...props}
-                          className="border-border/40 text-foreground/70 border-r px-4 py-3 text-left text-xs font-semibold tracking-wider uppercase last:border-r-0"
-                        />
-                      );
-                    },
-                    td: (
-                      props: React.TdHTMLAttributes<HTMLTableCellElement>
-                    ) => {
-                      return (
-                        <td
-                          {...props}
-                          className="border-border/40 text-foreground/80 border-r px-4 py-3 last:border-r-0"
-                        />
-                      );
-                    },
-                    pre: (props: React.HTMLAttributes<HTMLPreElement>) => {
-                      return (
-                        <pre
-                          {...props}
-                          className="border-border/50 bg-muted/50 my-4 overflow-x-auto rounded-lg border p-4 text-xs leading-relaxed"
-                        />
-                      );
-                    },
-                    code: (props: React.HTMLAttributes<HTMLElement>) => {
-                      return (
-                        <code
-                          {...props}
-                          className="bg-muted/70 text-foreground rounded-md px-1.5 py-0.5 font-mono text-xs"
-                        />
-                      );
-                    },
-                  } as unknown as Parameters<typeof Streamdown>[0]["components"]
-                }
-              >
+              <Streamdown components={streamdownComponents}>
                 {combinedContent}
               </Streamdown>
             ) : (
