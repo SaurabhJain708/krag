@@ -1,4 +1,5 @@
 import os
+import re
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -121,6 +122,52 @@ def create_structured_llm(model: type[TextWithCitations]) -> ChatGoogleGenerativ
     return llm.with_structured_output(model, method="json_schema")
 
 
+def deduplicate_citations(
+    text_with_citations: TextWithCitations,
+) -> TextWithCitations:
+    """Deduplicate citations that reference the same (sourceId, chunkId) pair.
+
+    When the same chunk is cited multiple times, they should all use the same
+    citation number. This function groups citations by (sourceId, chunkId) and
+    reassigns citation numbers accordingly.
+    """
+    # Group citations by (sourceId, chunkId) to find duplicates
+    citation_map: dict[tuple[str, str], Citation] = {}
+    old_to_new_number: dict[str, str] = {}
+    new_number = 1
+
+    # First pass: identify unique citations and assign new numbers
+    for citation in text_with_citations.citations:
+        key = (citation.sourceId, citation.chunkId)
+        if key not in citation_map:
+            # This is a new unique citation
+            new_citation_number = str(new_number)
+            citation_map[key] = Citation(
+                citation=new_citation_number,
+                sourceId=citation.sourceId,
+                chunkId=citation.chunkId,
+                brief_summary=citation.brief_summary,
+            )
+            old_to_new_number[citation.citation] = new_citation_number
+            new_number += 1
+        else:
+            # This citation already exists, map old number to existing new number
+            old_to_new_number[citation.citation] = citation_map[key].citation
+
+    # Update all citation markers in the text
+    updated_text = text_with_citations.text
+    for old_num, new_num in old_to_new_number.items():
+        # Replace [CITATION: old_num] with [CITATION: new_num]
+        pattern = rf"\[CITATION:\s*{re.escape(old_num)}\s*\]"
+        updated_text = re.sub(pattern, f"[CITATION: {new_num}]", updated_text)
+
+    # Return deduplicated result
+    return TextWithCitations(
+        text=updated_text,
+        citations=list(citation_map.values()),
+    )
+
+
 async def final_extraction(
     parent_chunks: list[ParentChunk], user_query: str
 ) -> TextWithCitations:
@@ -144,5 +191,9 @@ async def final_extraction(
 
     # Explicit Pydantic validation
     validated_result = TextWithCitationsModel.model_validate(result.model_dump())
-    print(validated_result.model_dump_json())
-    return validated_result
+
+    # Deduplicate citations that reference the same chunk
+    deduplicated_result = deduplicate_citations(validated_result)
+
+    print(deduplicated_result.model_dump_json())
+    return deduplicated_result

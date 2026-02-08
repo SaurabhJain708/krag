@@ -23,9 +23,9 @@ generator client_py_retrieval {
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  directUrl  = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum MessageRole {
@@ -123,17 +123,18 @@ model Verification {
 }
 
 model Notebook {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   name        String
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  context     Json?
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages    Message[]
   sources     Source[]
   image       String?
-  encrypted   Boolean   @default(false)
+  encryption  Encryption @default(NotEncrypted)
 
   @@index([userId])
   @@map("notebook")

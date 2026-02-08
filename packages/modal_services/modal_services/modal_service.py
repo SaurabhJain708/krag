@@ -249,7 +249,7 @@ class FlorenceSummarizer:
 
 
 @app.cls(
-    gpu="L4",
+    gpu="T4",
     image=bge_m3_image,
     max_containers=4,
     cpu=4.0,
@@ -258,6 +258,47 @@ class FlorenceSummarizer:
 )
 @modal.concurrent(max_inputs=32)
 class BGEM3Embedder:
+    @modal.enter()
+    def setup(self):
+        """
+        Loads the BGE-M3 model into GPU memory once per container start.
+        """
+        from FlagEmbedding import BGEM3FlagModel  # type: ignore
+
+        # Load model in FP16 for speed and lower VRAM usage
+        self.model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True, device="cuda")
+
+    @modal.method()
+    def generate_embeddings(
+        self, texts: list[str], batch_size: int = 12
+    ) -> list[list[float]]:
+        """
+        Generates dense embeddings for a list of text strings.
+        Returns a list of list of floats.
+        """
+        # BGE-M3 can output Dense, Sparse, and ColBERT vectors.
+        # For standard ingestion, we typically only need the Dense vector.
+        output = self.model.encode(
+            texts,
+            batch_size=batch_size,
+            max_length=8192,
+            return_dense=True,
+        )
+
+        # Output['dense_vecs'] is a numpy array, convert to list for serialization
+        return output["dense_vecs"].tolist()
+
+
+@app.cls(
+    gpu=None,
+    image=bge_m3_image,
+    max_containers=4,
+    cpu=1,
+    scaledown_window=5,
+    secrets=[modal.Secret.from_dotenv()],
+)
+@modal.concurrent(max_inputs=2)
+class BGEM3EmbedderCPU:
     @modal.enter()
     def setup(self):
         """
@@ -400,6 +441,7 @@ class Qwen2_5_7BAWQ:
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=0.95,
+            repetition_penalty=1.15,
             logits_processors=logits_processors,
         )
 

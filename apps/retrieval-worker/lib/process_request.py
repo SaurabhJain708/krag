@@ -3,6 +3,7 @@ from utils.filter_chunks_using_llm import filter_chunks_using_llm
 from utils.final_extraction import final_extraction
 from utils.finalise_response import finalise_response
 from utils.get_parent_chunks import get_parent_chunks
+from utils.prepare_context import prepare_context
 from utils.prepare_question import prepare_question
 from utils.save_to_db import save_to_db
 
@@ -51,5 +52,10 @@ async def process_request(
     print(f"Saving response to database for assistant message: {assistant_message_id}")
 
     await save_to_db(assistant_message_id, final_response)
+
+    # 8. Prepare the context
+    print(f"Preparing context for notebook: {notebook_id}")
+    await prepare_context(content, final_response, notebook_id)
+    print("Context prepared")
 
     return
