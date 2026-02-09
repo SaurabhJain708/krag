@@ -20,6 +20,8 @@ import {
   Database,
   Settings,
   CheckCircle2,
+  X,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -196,6 +198,18 @@ export function ChatPane({
     });
   };
 
+  const handleCancel = () => {
+    // Cancel the subscription by clearing the input
+    setSubscriptionInput(null);
+    setIsLoading(false);
+    setCurrentStatus(null);
+    setStatusHistory([]);
+    toast.dismiss("create-message");
+    toast.info("Message cancelled");
+    // Refresh messages to get the current state (removes optimistic update)
+    utils.messagesRouter.getMessages.invalidate({ notebookId });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -324,6 +338,15 @@ export function ChatPane({
                                   </p>
                                 </div>
                                 <Loader2 className="text-primary h-4 w-4 shrink-0 animate-spin sm:h-5 sm:w-5" />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={handleCancel}
+                                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 shrink-0 cursor-pointer"
+                                  title="Cancel"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
                               </>
                             ) : (
                               <>
@@ -335,6 +358,15 @@ export function ChatPane({
                                     Thinking...
                                   </p>
                                 </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={handleCancel}
+                                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 shrink-0"
+                                  title="Cancel"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
                               </>
                             )}
                           </div>
@@ -426,13 +458,13 @@ export function ChatPane({
                 />
               </div>
               <Button
-                onClick={handleSend}
-                disabled={!message.trim() || isLoading}
+                onClick={isLoading ? handleCancel : handleSend}
+                disabled={!isLoading && !message.trim()}
                 size="icon"
-                className="h-[44px] w-[44px] shrink-0 rounded-lg transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                className="h-[44px] w-[44px] shrink-0 cursor-pointer rounded-lg transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Square className="h-4 w-4" />
                 ) : (
                   <Send className="h-4 w-4" />
                 )}

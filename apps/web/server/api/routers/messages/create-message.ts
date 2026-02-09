@@ -51,6 +51,12 @@ export const CreateMessage = protectedProcedure
       })
     );
 
+    // Create AbortController to handle cancellation
+    const abortController = new AbortController();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    let completed = false;
+    let clientDisconnected = false;
+
     try {
       const response = await fetch(`${process.env.RETRIEVAL_API}`, {
         method: "POST",
@@ -62,6 +68,7 @@ export const CreateMessage = protectedProcedure
           assistant_message_id: assistantMessage.id,
           content: content,
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -72,12 +79,28 @@ export const CreateMessage = protectedProcedure
         throw new Error("Response body is null");
       }
 
-      const reader = response.body.getReader();
+      reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
 
       while (true) {
-        const { done, value } = await reader.read();
+        // Check if aborted before reading
+        if (abortController.signal.aborted) {
+          break;
+        }
+
+        let readResult;
+        try {
+          readResult = await reader.read();
+        } catch (readErr) {
+          // If read fails due to abort, break
+          if (readErr instanceof Error && readErr.name === "AbortError") {
+            break;
+          }
+          throw readErr;
+        }
+
+        const { done, value } = readResult;
 
         if (done) {
           // Process any remaining data in buffer before breaking
@@ -86,12 +109,41 @@ export const CreateMessage = protectedProcedure
             if (trimmedLine.startsWith("data: ")) {
               const status = trimmedLine.slice(6).trim();
               if (status) {
-                yield status;
+                try {
+                  yield status;
+                } catch {
+                  // Client disconnected, abort the request
+                  clientDisconnected = true;
+                  abortController.abort();
+                  if (reader) {
+                    try {
+                      await reader.cancel();
+                    } catch {
+                      // Ignore cancel errors
+                    }
+                  }
+                  return; // Exit generator
+                }
               }
             } else if (trimmedLine) {
-              yield trimmedLine;
+              try {
+                yield trimmedLine;
+              } catch {
+                // Client disconnected, abort the request
+                clientDisconnected = true;
+                abortController.abort();
+                if (reader) {
+                  try {
+                    await reader.cancel();
+                  } catch {
+                    // Ignore cancel errors
+                  }
+                }
+                return; // Exit generator
+              }
             }
           }
+          completed = true;
           break;
         }
 
@@ -106,19 +158,73 @@ export const CreateMessage = protectedProcedure
           const trimmedLine = line.trim();
           if (!trimmedLine) continue;
 
+          // Check if aborted before yielding
+          if (abortController.signal.aborted) {
+            break;
+          }
+
           // Handle SSE format: "data: status_string"
           if (trimmedLine.startsWith("data: ")) {
             const status = trimmedLine.slice(6).trim(); // Remove "data: " prefix
             if (status) {
-              yield status;
+              try {
+                yield status;
+              } catch {
+                // Client disconnected - tRPC stops calling the generator
+                console.log("Client disconnected, aborting Python API request");
+                clientDisconnected = true;
+                abortController.abort();
+                if (reader) {
+                  try {
+                    await reader.cancel();
+                  } catch {
+                    // Ignore cancel errors
+                  }
+                }
+                return; // Exit generator
+              }
             }
           } else {
             // Plain status string
-            yield trimmedLine;
+            try {
+              yield trimmedLine;
+            } catch {
+              // Client disconnected - tRPC stops calling the generator
+              clientDisconnected = true;
+              abortController.abort();
+              if (reader) {
+                try {
+                  await reader.cancel();
+                } catch {
+                  // Ignore cancel errors
+                }
+              }
+              return; // Exit generator
+            }
           }
         }
       }
     } catch (err) {
+      // Handle abort errors gracefully
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log("Request aborted by client");
+        // Mark the assistant message as failed when cancelled
+        await ctx.db.message
+          .update({
+            where: { id: assistantMessage.id },
+            data: { failed: true },
+          })
+          .catch((dbErr) => {
+            console.error("Failed to update message status:", dbErr);
+          });
+        return; // Exit gracefully without throwing
+      }
+
+      // Don't throw if client disconnected
+      if (clientDisconnected) {
+        return;
+      }
+
       console.error("Failed to call retrieval API", err);
       // Mark the assistant message as failed if the API call fails
       await ctx.db.message
@@ -130,5 +236,18 @@ export const CreateMessage = protectedProcedure
           console.error("Failed to update message status:", dbErr);
         });
       throw new Error("Failed to process message");
+    } finally {
+      // Cleanup: abort the request if not completed or client disconnected
+      if (!completed || clientDisconnected) {
+        abortController.abort();
+      }
+      if (reader) {
+        try {
+          await reader.cancel();
+          reader.releaseLock();
+        } catch {
+          // Ignore cleanup errors (expected when already aborted)
+        }
+      }
     }
   });

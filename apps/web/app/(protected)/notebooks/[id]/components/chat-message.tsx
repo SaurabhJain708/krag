@@ -155,7 +155,8 @@ export function ChatMessage({
   onCitationClick,
   onRetry,
 }: ChatMessageProps) {
-  const isFailed = failed && role === "assistant";
+  const isEmpty = role === "assistant" && !content?.trim();
+  const isFailed = (failed || isEmpty) && role === "assistant";
 
   return (
     <div

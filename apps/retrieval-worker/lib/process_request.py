@@ -90,7 +90,7 @@ async def process_request(notebook_id: str, assistant_message_id: str, content: 
         ConnectionAbortedError,
     ) as e:
         # Client disconnected - handle connection errors
-        print(f"Client connection was cut during processing: {e}")
+        print(f"Client connection was cut during processing: {e}", flush=True)
         await save_to_db(assistant_message_id, None, failed=True)
         raise ClientConnectionInterrupted(
             "Client connection was cut during processing"
