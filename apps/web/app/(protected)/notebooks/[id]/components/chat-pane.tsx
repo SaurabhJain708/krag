@@ -45,6 +45,11 @@ export function ChatPane({
 }: ChatPaneProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<string | null>(null);
+  const [subscriptionInput, setSubscriptionInput] = useState<{
+    notebookId: string;
+    content: string;
+  } | null>(null);
   const hasSources = sourceCount > 0;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -56,71 +61,85 @@ export function ChatPane({
       notebookId,
     });
 
-  const createMessage = trpc.messagesRouter.createMessage.useMutation({
-    onMutate: async (newMessage) => {
-      // Snapshot the previous value for rollback on error
-      const previousMessages = utils.messagesRouter.getMessages.getData({
-        notebookId,
-      });
+  // Subscription for streaming status updates
+  trpc.messagesRouter.createMessage.useSubscription(
+    subscriptionInput || { notebookId: "", content: "" },
+    {
+      enabled: subscriptionInput !== null,
+      onData: (status: string) => {
+        // Update status as we receive streaming updates
+        setCurrentStatus(status);
+        // Map status to user-friendly messages
+        const statusMessages: Record<string, string> = {
+          preparing_question: "Preparing question...",
+          retrieving_chunks: "Retrieving relevant chunks...",
+          filtering_chunks: "Filtering chunks...",
+          getting_parent_chunks: "Getting parent chunks...",
+          extracting_content: "Extracting content...",
+          summarizing_content: "Summarizing content...",
+          generating_response: "Generating response...",
+          saving_to_db: "Saving to database...",
+          preparing_context: "Preparing context...",
+          cleaning_up: "Cleaning up...",
+        };
+        const friendlyMessage = statusMessages[status] || status;
+        toast.loading(friendlyMessage, { id: "create-message" });
+      },
+      onError: (error) => {
+        console.error("Subscription error:", error);
+        toast.error(error.message || "Failed to process message", {
+          id: "create-message",
+        });
+        setIsLoading(false);
+        setCurrentStatus(null);
+        setSubscriptionInput(null);
+        // Rollback optimistic update
+        utils.messagesRouter.getMessages.invalidate({ notebookId });
+      },
+      onComplete: () => {
+        toast.success("Message processed successfully", {
+          id: "create-message",
+        });
+        setIsLoading(false);
+        setCurrentStatus(null);
+        setSubscriptionInput(null);
+        // Refresh messages to get the final result
+        utils.messagesRouter.getMessages.invalidate({ notebookId });
+      },
+    }
+  );
 
-      // Optimistically update to the new value
-      const optimisticUserMessage = {
-        id: `temp-${Date.now()}`,
-        content: newMessage.content,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userId: "", // Will be filled by server
-        notebookId: newMessage.notebookId,
-        role: "user" as const,
-        failed: false,
-      };
-
-      utils.messagesRouter.getMessages.setData({ notebookId }, (old) => [
-        ...(old ?? []),
-        optimisticUserMessage,
-      ]);
-
-      // Return a context object with the snapshotted value
-      return { previousMessages };
-    },
-    onSuccess: () => {
-      setMessage("");
-      setIsLoading(false);
-      // Invalidate to get the real data from server
-      utils.messagesRouter.getMessages.invalidate({ notebookId });
-    },
-    onError: (error, _newMessage, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousMessages) {
-        utils.messagesRouter.getMessages.setData(
-          { notebookId },
-          context.previousMessages
-        );
-      }
-      toast.error(error.message || "Failed to send message", {
-        id: "create-message",
-      });
-      setIsLoading(false);
-    },
-  });
-
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!message.trim() || isLoading) return;
 
     const messageContent = message.trim();
     setMessage("");
     setIsLoading(true);
+    setCurrentStatus(null);
     toast.loading("Sending message...", { id: "create-message" });
 
-    try {
-      await createMessage.mutateAsync({
-        notebookId,
-        content: messageContent,
-      });
-      // Success is handled by onSuccess callback
-    } catch {
-      // Error is handled by onError callback
-    }
+    // Optimistically add user message
+    const optimisticUserMessage = {
+      id: `temp-${Date.now()}`,
+      content: messageContent,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userId: "", // Will be filled by server
+      notebookId,
+      role: "user" as const,
+      failed: false,
+    };
+
+    utils.messagesRouter.getMessages.setData({ notebookId }, (old) => [
+      ...(old ?? []),
+      optimisticUserMessage,
+    ]);
+
+    // Start subscription by setting input
+    setSubscriptionInput({
+      notebookId,
+      content: messageContent,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -228,7 +247,16 @@ export function ChatPane({
                         <div className="flex items-center gap-1.5">
                           <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
                           <span className="text-muted-foreground text-sm">
-                            Thinking...
+                            {currentStatus
+                              ? currentStatus
+                                  .split("_")
+                                  .map(
+                                    (word) =>
+                                      word.charAt(0).toUpperCase() +
+                                      word.slice(1)
+                                  )
+                                  .join(" ")
+                              : "Thinking..."}
                           </span>
                         </div>
                       </div>

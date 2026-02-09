@@ -10,6 +10,7 @@ env_path = root_dir / ".env"
 load_dotenv(dotenv_path=env_path)
 
 from fastapi import FastAPI  # noqa: E402
+from fastapi.responses import StreamingResponse  # noqa: E402
 from lib.process_request import process_request  # noqa: E402
 from modal_services import app as modal_app  # noqa: E402
 from schemas import MessageData  # noqa: E402
@@ -63,6 +64,25 @@ async def chat(request: MessageData):
     assistant_message_id = request.assistant_message_id
     content = request.content
 
-    await process_request(notebook_id, assistant_message_id, content)
+    async def generate():
+        """Generator function that yields status updates in SSE format."""
+        try:
+            async for status in process_request(
+                notebook_id, assistant_message_id, content
+            ):
+                # Send status in SSE format: "data: status\n\n"
+                yield f"data: {status}\n\n"
+        except Exception as e:
+            # Log error but don't send "error" as status - let exception propagate
+            # The frontend will handle the error via onError callback
+            print(f"Error in generate(): {e}")
+            raise e
 
-    return
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
