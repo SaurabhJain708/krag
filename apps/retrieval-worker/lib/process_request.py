@@ -14,7 +14,7 @@ async def process_request(
 
     # 1. Prepare the question
     print(f"Preparing question for content: {content}")
-    prepared_question = await prepare_question(content)
+    prepared_question = await prepare_question(content, notebook_id)
     print(f"Prepared question: {prepared_question}")
 
     # 2. Retrieve the chunks
