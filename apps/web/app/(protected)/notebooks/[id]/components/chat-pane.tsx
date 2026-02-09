@@ -11,6 +11,14 @@ import {
   Bot,
   Send,
   FileText,
+  Search,
+  Filter,
+  Layers,
+  FileSearch,
+  Sparkles,
+  Database,
+  Settings,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,10 +54,58 @@ export function ChatPane({
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
+  const [statusHistory, setStatusHistory] = useState<string[]>([]);
   const [subscriptionInput, setSubscriptionInput] = useState<{
     notebookId: string;
     content: string;
   } | null>(null);
+
+  // Status configuration with icons and friendly messages
+  const statusConfig: Record<
+    string,
+    { message: string; icon: React.ComponentType<{ className?: string }> }
+  > = {
+    preparing_question: {
+      message: "Preparing your question",
+      icon: Settings,
+    },
+    retrieving_chunks: {
+      message: "Searching through your sources",
+      icon: Search,
+    },
+    filtering_chunks: {
+      message: "Filtering relevant information",
+      icon: Filter,
+    },
+    getting_parent_chunks: {
+      message: "Gathering context",
+      icon: Layers,
+    },
+    extracting_content: {
+      message: "Extracting key information",
+      icon: FileSearch,
+    },
+    summarizing_content: {
+      message: "Summarizing findings",
+      icon: Sparkles,
+    },
+    generating_response: {
+      message: "Generating response",
+      icon: Bot,
+    },
+    saving_to_db: {
+      message: "Saving response",
+      icon: Database,
+    },
+    preparing_context: {
+      message: "Preparing context",
+      icon: Settings,
+    },
+    cleaning_up: {
+      message: "Finalizing",
+      icon: CheckCircle2,
+    },
+  };
   const hasSources = sourceCount > 0;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -69,20 +125,14 @@ export function ChatPane({
       onData: (status: string) => {
         // Update status as we receive streaming updates
         setCurrentStatus(status);
-        // Map status to user-friendly messages
-        const statusMessages: Record<string, string> = {
-          preparing_question: "Preparing question...",
-          retrieving_chunks: "Retrieving relevant chunks...",
-          filtering_chunks: "Filtering chunks...",
-          getting_parent_chunks: "Getting parent chunks...",
-          extracting_content: "Extracting content...",
-          summarizing_content: "Summarizing content...",
-          generating_response: "Generating response...",
-          saving_to_db: "Saving to database...",
-          preparing_context: "Preparing context...",
-          cleaning_up: "Cleaning up...",
-        };
-        const friendlyMessage = statusMessages[status] || status;
+        setStatusHistory((prev) => {
+          if (!prev.includes(status)) {
+            return [...prev, status];
+          }
+          return prev;
+        });
+        const config = statusConfig[status];
+        const friendlyMessage = config?.message || status;
         toast.loading(friendlyMessage, { id: "create-message" });
       },
       onError: (error) => {
@@ -92,6 +142,7 @@ export function ChatPane({
         });
         setIsLoading(false);
         setCurrentStatus(null);
+        setStatusHistory([]);
         setSubscriptionInput(null);
         // Rollback optimistic update
         utils.messagesRouter.getMessages.invalidate({ notebookId });
@@ -102,6 +153,7 @@ export function ChatPane({
         });
         setIsLoading(false);
         setCurrentStatus(null);
+        setStatusHistory([]);
         setSubscriptionInput(null);
         // Refresh messages to get the final result
         utils.messagesRouter.getMessages.invalidate({ notebookId });
@@ -116,6 +168,7 @@ export function ChatPane({
     setMessage("");
     setIsLoading(true);
     setCurrentStatus(null);
+    setStatusHistory([]);
     toast.loading("Sending message...", { id: "create-message" });
 
     // Optimistically add user message
@@ -239,25 +292,109 @@ export function ChatPane({
                     />
                   ))}
                   {isLoading && (
-                    <div className="flex justify-start gap-3">
-                      <div className="bg-primary/10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                        <Bot className="text-primary h-4 w-4" />
+                    <div className="animate-in fade-in slide-in-from-bottom-4 ml-0 flex justify-start gap-3 duration-500 sm:ml-2 sm:gap-4">
+                      <div className="from-primary/20 to-primary/5 ring-primary/30 z-10 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br shadow-lg ring-2 sm:h-12 sm:w-12">
+                        <Bot className="text-primary h-5 w-5 sm:h-6 sm:w-6" />
                       </div>
-                      <div className="bg-muted border-border/50 rounded-lg border px-4 py-2.5">
-                        <div className="flex items-center gap-1.5">
-                          <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
-                          <span className="text-muted-foreground text-sm">
-                            {currentStatus
-                              ? currentStatus
-                                  .split("_")
-                                  .map(
-                                    (word) =>
-                                      word.charAt(0).toUpperCase() +
-                                      word.slice(1)
-                                  )
-                                  .join(" ")
-                              : "Thinking..."}
-                          </span>
+                      <div className="from-muted/80 to-muted/40 border-border/60 w-full rounded-xl border-2 bg-linear-to-br px-4 py-4 shadow-lg backdrop-blur-sm sm:max-w-[480px] sm:min-w-[320px] sm:px-6 sm:py-5">
+                        <div className="flex flex-col gap-3 sm:gap-4">
+                          {/* Current Status - Larger and More Prominent */}
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            {currentStatus && statusConfig[currentStatus] ? (
+                              <>
+                                <div className="from-primary/20 to-primary/10 text-primary ring-primary/20 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-linear-to-br shadow-sm ring-1 sm:h-10 sm:w-10">
+                                  {(() => {
+                                    const Icon =
+                                      statusConfig[currentStatus].icon;
+                                    return (
+                                      <Icon className="h-4 w-4 animate-pulse drop-shadow-sm sm:h-5 sm:w-5" />
+                                    );
+                                  })()}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-foreground text-sm leading-tight font-semibold sm:text-base">
+                                    {statusConfig[currentStatus].message}
+                                  </p>
+                                </div>
+                                <Loader2 className="text-primary h-4 w-4 shrink-0 animate-spin sm:h-5 sm:w-5" />
+                              </>
+                            ) : (
+                              <>
+                                <div className="from-primary/20 to-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-linear-to-br shadow-sm sm:h-10 sm:w-10">
+                                  <Loader2 className="h-4 w-4 animate-spin sm:h-5 sm:w-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-foreground text-sm font-semibold sm:text-base">
+                                    Thinking...
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Progress Steps - Enhanced Design */}
+                          {statusHistory.length > 0 && (
+                            <div className="border-border/40 space-y-2 border-t pt-3">
+                              <p className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase sm:text-xs">
+                                Progress
+                              </p>
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                {statusHistory.map((status, idx) => {
+                                  const config = statusConfig[status];
+                                  const Icon = config?.icon || CheckCircle2;
+                                  const isCurrent = status === currentStatus;
+                                  const currentIndex = currentStatus
+                                    ? statusHistory.indexOf(currentStatus)
+                                    : -1;
+                                  const isCompleted =
+                                    currentIndex !== -1 && idx < currentIndex;
+
+                                  return (
+                                    <div
+                                      key={status}
+                                      className="group flex items-center gap-1.5 sm:gap-2"
+                                    >
+                                      <div
+                                        className={cn(
+                                          "flex h-7 w-7 items-center justify-center rounded-lg shadow-sm transition-all duration-300 sm:h-8 sm:w-8",
+                                          isCurrent
+                                            ? "from-primary to-primary/90 text-primary-foreground ring-primary/50 scale-110 bg-linear-to-br shadow-md ring-2"
+                                            : isCompleted
+                                              ? "from-primary/25 to-primary/15 text-primary ring-primary/30 bg-linear-to-br ring-1"
+                                              : "from-muted/80 to-muted/60 text-muted-foreground ring-border/50 bg-linear-to-br ring-1"
+                                        )}
+                                      >
+                                        <Icon
+                                          className={cn(
+                                            "h-3.5 w-3.5 drop-shadow-sm transition-all sm:h-4 sm:w-4",
+                                            isCurrent && "animate-pulse"
+                                          )}
+                                        />
+                                      </div>
+                                      {idx < statusHistory.length - 1 && (
+                                        <div className="relative flex items-center">
+                                          <div
+                                            className={cn(
+                                              "relative h-[2px] w-3 overflow-hidden rounded-full transition-all duration-300 sm:w-4",
+                                              isCompleted
+                                                ? "from-primary/60 via-primary/40 to-primary/20 bg-linear-to-r"
+                                                : isCurrent
+                                                  ? "from-primary/40 via-primary/20 to-border/30 bg-linear-to-r"
+                                                  : "from-border/40 to-border/20 bg-linear-to-r"
+                                            )}
+                                          >
+                                            {isCompleted && (
+                                              <div className="bg-primary/30 absolute inset-0 animate-pulse" />
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
