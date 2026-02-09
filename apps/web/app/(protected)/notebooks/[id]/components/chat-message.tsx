@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Bot, User } from "lucide-react";
+import { Bot, User, AlertCircle, RefreshCw } from "lucide-react";
 import { Streamdown } from "streamdown";
 import {
   Tooltip,
@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface CitationData {
@@ -21,7 +22,9 @@ interface CitationData {
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  failed?: boolean;
   onCitationClick?: (citation: CitationData) => void;
+  onRetry?: () => void;
 }
 
 // Parse citation data from original message content by matching citation number
@@ -147,8 +150,12 @@ const CitationButton = (
 export function ChatMessage({
   role,
   content,
+  failed = false,
   onCitationClick,
+  onRetry,
 }: ChatMessageProps) {
+  const isFailed = failed && role === "assistant";
+
   return (
     <div
       className={cn(
@@ -157,8 +164,17 @@ export function ChatMessage({
       )}
     >
       {role === "assistant" && (
-        <div className="bg-primary/10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-          <Bot className="text-primary h-4 w-4" />
+        <div
+          className={cn(
+            "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+            isFailed ? "bg-destructive/10" : "bg-primary/10"
+          )}
+        >
+          {isFailed ? (
+            <AlertCircle className="text-destructive h-4 w-4" />
+          ) : (
+            <Bot className="text-primary h-4 w-4" />
+          )}
         </div>
       )}
       <div
@@ -166,10 +182,36 @@ export function ChatMessage({
           "max-w-[80%] rounded-lg px-4 py-2.5 text-sm leading-relaxed",
           role === "user"
             ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground border-border/50 border"
+            : isFailed
+              ? "bg-destructive/10 text-destructive border-destructive/20 border"
+              : "bg-muted text-foreground border-border/50 border"
         )}
       >
-        {role === "assistant" ? (
+        {isFailed ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium">Failed to generate response</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Something went wrong while processing your request. Please try
+                  again.
+                </p>
+              </div>
+            </div>
+            {onRetry && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                className="w-fit"
+              >
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                Retry
+              </Button>
+            )}
+          </div>
+        ) : role === "assistant" ? (
           <Streamdown
             components={
               {

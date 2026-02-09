@@ -3,7 +3,6 @@ import { protectedProcedure } from "../../trpc";
 import { z } from "zod";
 import { FileProcessingStatus, FileType } from "@repo/db";
 import { uploadFile as uploadFileToStorage } from "@/lib/upload-file";
-import { supabase } from "@/lib/supabase";
 import { redis } from "@/lib/redis";
 
 export const uploadFile = protectedProcedure

@@ -57,12 +57,46 @@ export function ChatPane({
     });
 
   const createMessage = trpc.messagesRouter.createMessage.useMutation({
+    onMutate: async (newMessage) => {
+      // Snapshot the previous value for rollback on error
+      const previousMessages = utils.messagesRouter.getMessages.getData({
+        notebookId,
+      });
+
+      // Optimistically update to the new value
+      const optimisticUserMessage = {
+        id: `temp-${Date.now()}`,
+        content: newMessage.content,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        userId: "", // Will be filled by server
+        notebookId: newMessage.notebookId,
+        role: "user" as const,
+        failed: false,
+      };
+
+      utils.messagesRouter.getMessages.setData({ notebookId }, (old) => [
+        ...(old ?? []),
+        optimisticUserMessage,
+      ]);
+
+      // Return a context object with the snapshotted value
+      return { previousMessages };
+    },
     onSuccess: () => {
       setMessage("");
       setIsLoading(false);
+      // Invalidate to get the real data from server
       utils.messagesRouter.getMessages.invalidate({ notebookId });
     },
-    onError: (error) => {
+    onError: (error, _newMessage, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousMessages) {
+        utils.messagesRouter.getMessages.setData(
+          { notebookId },
+          context.previousMessages
+        );
+      }
       toast.error(error.message || "Failed to send message", {
         id: "create-message",
       });
@@ -73,13 +107,15 @@ export function ChatPane({
   const handleSend = async () => {
     if (!message.trim() || isLoading) return;
 
+    const messageContent = message.trim();
+    setMessage("");
     setIsLoading(true);
     toast.loading("Sending message...", { id: "create-message" });
 
     try {
       await createMessage.mutateAsync({
         notebookId,
-        content: message.trim(),
+        content: messageContent,
       });
       // Success is handled by onSuccess callback
     } catch {
@@ -178,7 +214,8 @@ export function ChatPane({
                     <ChatMessage
                       key={msg.id}
                       role={msg.role}
-                      content={msg.content}
+                      content={msg.content || ""}
+                      failed={msg.failed}
                       onCitationClick={handleCitationClick}
                     />
                   ))}

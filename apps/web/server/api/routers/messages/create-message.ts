@@ -48,11 +48,8 @@ export const CreateMessage = protectedProcedure
       })
     );
 
-    // Kick off retrieval / LLM work asynchronously so this request
-    // doesn't block (and potentially time out) while the Python worker
-    // runs for 2–3 minutes.
-    void axios
-      .post(
+    try {
+      await axios.post(
         `${process.env.RETRIEVAL_API}`,
         {
           notebook_id: notebookId,
@@ -60,14 +57,19 @@ export const CreateMessage = protectedProcedure
           content: content,
         },
         {
-          // Allow plenty of time for the retrieval API to respond;
-          // this only affects the background call, not the tRPC response.
+          // Allow plenty of time for the retrieval API to respond
           timeout: 5 * 60 * 1000, // 5 minutes
         }
-      )
-      .catch((err) => {
-        console.error("Failed to call retrieval API", err);
+      );
+    } catch (err) {
+      console.error("Failed to call retrieval API", err);
+      // Mark the assistant message as failed if the API call fails
+      await ctx.db.message.update({
+        where: { id: assistantMessage.id },
+        data: { failed: true },
       });
+      throw new Error("Failed to process message");
+    }
 
     return { success: true };
   });
