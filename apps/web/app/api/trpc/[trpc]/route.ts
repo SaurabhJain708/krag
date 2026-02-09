@@ -11,6 +11,7 @@ import { TRPCError } from "@trpc/server";
 const createContext = async (req: NextRequest) => {
   return createTRPCContext({
     headers: req.headers,
+    signal: req.signal,
   });
 };
 

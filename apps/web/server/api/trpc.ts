@@ -29,8 +29,11 @@ import { prisma as db } from "@repo/db";
  * @see https://trpc.io/docs/server/context
  */
 
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const { headers } = opts;
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  signal: AbortSignal;
+}) => {
+  const { headers, signal } = opts;
 
   const headersObj: Record<string, string> = {};
   headers.forEach((value, key) => {
@@ -44,6 +47,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   return {
     db,
     session,
+    signal,
     ...opts,
   };
 };
