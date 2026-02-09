@@ -7,4 +7,5 @@ export interface Notebook {
   createdAt: Date;
   sourceCount: number;
   image?: string | null;
+  encryption: "NotEncrypted" | "SimpleEncryption" | "AdvancedEncryption";
 }

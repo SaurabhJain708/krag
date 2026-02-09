@@ -17,10 +17,8 @@ export const CreateNotebook = protectedProcedure
   )
   .mutation(async ({ input, ctx }) => {
     const userId = ctx.session.user.id;
-    const encryption = ctx.session.user.encryption;
-    const isEncrypted =
-      encryption === Encryption.SimpleEncryption ||
-      encryption === Encryption.AdvancedEncryption;
+    const encryption: Encryption =
+      (ctx.session.user.encryption as Encryption) ?? Encryption.NotEncrypted;
     const { name, description, imageBase64, imageType } = input;
 
     let imageUrl: string | null = null;
@@ -43,7 +41,7 @@ export const CreateNotebook = protectedProcedure
         description: description ?? null,
         userId,
         image: imageUrl,
-        encrypted: isEncrypted,
+        encryption: encryption,
       },
     });
     return notebook;

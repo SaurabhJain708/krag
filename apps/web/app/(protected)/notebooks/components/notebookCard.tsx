@@ -1,5 +1,13 @@
 import { format } from "date-fns";
-import { BookOpen, Calendar, FileText, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  Calendar,
+  FileText,
+  Trash2,
+  Lock,
+  LockOpen,
+  ShieldCheck,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   type Notebook,
@@ -16,6 +24,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -50,6 +64,49 @@ function getIconGradientForNotebook(id: string) {
   ];
   const index = parseInt(id) % gradients.length;
   return gradients[index] || gradients[0];
+}
+
+// Get encryption display info
+function getEncryptionInfo(
+  encryption: "NotEncrypted" | "SimpleEncryption" | "AdvancedEncryption"
+) {
+  switch (encryption) {
+    case "NotEncrypted":
+      return {
+        label: "Not Encrypted",
+        icon: LockOpen,
+        className: "text-muted-foreground",
+        bgClassName: "bg-muted/50",
+        tooltip:
+          "This notebook is not encrypted. Data is stored in plain text.",
+      };
+    case "SimpleEncryption":
+      return {
+        label: "Simple Encryption",
+        icon: Lock,
+        className: "text-amber-600 dark:text-amber-500",
+        bgClassName: "bg-amber-50 dark:bg-amber-950/30",
+        tooltip:
+          "This notebook uses simple encryption for basic data protection.",
+      };
+    case "AdvancedEncryption":
+      return {
+        label: "Advanced Encryption",
+        icon: ShieldCheck,
+        className: "text-green-600 dark:text-green-500",
+        bgClassName: "bg-green-50 dark:bg-green-950/30",
+        tooltip:
+          "This notebook uses advanced encryption for maximum security and data protection.",
+      };
+    default:
+      return {
+        label: encryption,
+        icon: LockOpen,
+        className: "text-muted-foreground",
+        bgClassName: "bg-muted/50",
+        tooltip: "Encryption status unknown.",
+      };
+  }
 }
 
 export default function NotebookCard({
@@ -98,36 +155,156 @@ export default function NotebookCard({
 
   if (view === "list") {
     return (
+      <TooltipProvider>
+        <>
+          <Card
+            onClick={() => router.push(`/notebooks/${notebook.id}`)}
+            className="cursor-pointer border-0 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+          >
+            <CardContent className="flex items-center gap-4 p-4">
+              <div
+                className={`h-14 w-14 shrink-0 rounded-xl bg-linear-to-br ${iconGradient} flex items-center justify-center shadow-md`}
+              >
+                <BookOpen className="h-7 w-7 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="group-hover:text-primary truncate text-base font-semibold transition-colors">
+                  {notebook.name}
+                </h3>
+                {notebook.description && (
+                  <p className="text-muted-foreground mt-1 truncate text-sm">
+                    {notebook.description}
+                  </p>
+                )}
+                <div className="text-muted-foreground mt-2 flex items-center gap-4 text-xs">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {format(notebook.createdAt, "d MMM yyyy")}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    {notebook.sourceCount}{" "}
+                    {notebook.sourceCount === 1 ? "source" : "sources"}
+                  </span>
+                  {(() => {
+                    const encryptionInfo = getEncryptionInfo(
+                      notebook.encryption
+                    );
+                    const Icon = encryptionInfo.icon;
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={`inline-flex cursor-help items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ${encryptionInfo.bgClassName} ${encryptionInfo.className}`}
+                          >
+                            <Icon className="h-3 w-3" />
+                            {encryptionInfo.label}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{encryptionInfo.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })()}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                    onClick={handleOpenDeleteDialog}
+                    disabled={deleteNotebookMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Notebook?</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold">{notebook.name}</span>? This
+                  will permanently delete all notes, files, and messages in this
+                  notebook. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="cursor-pointer"
+                  disabled={deleteNotebookMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                  className="cursor-pointer"
+                  disabled={deleteNotebookMutation.isPending}
+                >
+                  {deleteNotebookMutation.isPending
+                    ? "Deleting..."
+                    : "Delete Notebook"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <TooltipProvider>
       <>
         <Card
           onClick={() => router.push(`/notebooks/${notebook.id}`)}
-          className="cursor-pointer border-0 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+          className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-xl border p-0 shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
         >
-          <CardContent className="flex items-center gap-4 p-4">
+          <CardContent className="flex h-full flex-col p-0">
             <div
-              className={`h-14 w-14 shrink-0 rounded-xl bg-linear-to-br ${iconGradient} flex items-center justify-center shadow-md`}
+              className={`relative h-40 bg-linear-to-br ${cardGradient} overflow-hidden rounded-t-xl`}
             >
-              <BookOpen className="h-7 w-7 text-white" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="group-hover:text-primary truncate text-base font-semibold transition-colors">
-                {notebook.name}
-              </h3>
-              {notebook.description && (
-                <p className="text-muted-foreground mt-1 truncate text-sm">
-                  {notebook.description}
-                </p>
+              {/* Notebook Image or Gradient Background */}
+              {notebook.image ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={notebook.image}
+                    alt={notebook.name}
+                    className="h-full w-full object-cover"
+                  />
+                  {/* Overlay for better text readability */}
+                  <div className="absolute inset-0 bg-linear-to-t from-black/40 via-black/20 to-transparent"></div>
+                </>
+              ) : (
+                <>
+                  {/* Gradient overlay with pattern */}
+                  <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent"></div>
+                  <div
+                    className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                      backgroundSize: "24px 24px",
+                    }}
+                  ></div>
+                  {/* Decorative circles */}
+                  <div className="absolute top-4 right-4 h-20 w-20 rounded-full bg-white/10 blur-xl"></div>
+                  <div className="absolute bottom-4 left-4 h-16 w-16 rounded-full bg-white/10 blur-lg"></div>
+                </>
               )}
-              <div className="text-muted-foreground mt-2 flex items-center gap-4 text-xs">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {format(notebook.createdAt, "d MMM yyyy")}
-                </span>
-                <span className="flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  {notebook.sourceCount}{" "}
-                  {notebook.sourceCount === 1 ? "source" : "sources"}
-                </span>
+              {/* Notebook Icon */}
+              <div
+                className={`absolute top-4 left-4 h-12 w-12 rounded-xl bg-linear-to-br ${iconGradient} z-10 flex items-center justify-center shadow-lg`}
+              >
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+              <div className="absolute top-3 right-3 z-10">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -137,6 +314,50 @@ export default function NotebookCard({
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+            </div>
+            <div className="bg-card flex flex-1 flex-col p-5">
+              <h3 className="group-hover:text-primary mb-2 line-clamp-2 text-base font-semibold transition-colors">
+                {notebook.name}
+              </h3>
+              {notebook.description && (
+                <p className="text-muted-foreground mb-4 line-clamp-2 flex-1 text-sm">
+                  {notebook.description}
+                </p>
+              )}
+              <div className="text-muted-foreground mt-auto flex items-center justify-between border-t pt-3 text-xs">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {format(notebook.createdAt, "d MMM yyyy")}
+                </span>
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5" />
+                    {notebook.sourceCount}{" "}
+                    {notebook.sourceCount === 1 ? "source" : "sources"}
+                  </span>
+                  {(() => {
+                    const encryptionInfo = getEncryptionInfo(
+                      notebook.encryption
+                    );
+                    const Icon = encryptionInfo.icon;
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={`inline-flex cursor-help items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ${encryptionInfo.bgClassName} ${encryptionInfo.className}`}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                            {encryptionInfo.label}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{encryptionInfo.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -176,122 +397,6 @@ export default function NotebookCard({
           </DialogContent>
         </Dialog>
       </>
-    );
-  }
-
-  return (
-    <>
-      <Card
-        onClick={() => router.push(`/notebooks/${notebook.id}`)}
-        className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-xl border p-0 shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
-      >
-        <CardContent className="flex h-full flex-col p-0">
-          <div
-            className={`relative h-40 bg-linear-to-br ${cardGradient} overflow-hidden rounded-t-xl`}
-          >
-            {/* Notebook Image or Gradient Background */}
-            {notebook.image ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={notebook.image}
-                  alt={notebook.name}
-                  className="h-full w-full object-cover"
-                />
-                {/* Overlay for better text readability */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/40 via-black/20 to-transparent"></div>
-              </>
-            ) : (
-              <>
-                {/* Gradient overlay with pattern */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent"></div>
-                <div
-                  className="absolute inset-0 opacity-10"
-                  style={{
-                    backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-                    backgroundSize: "24px 24px",
-                  }}
-                ></div>
-                {/* Decorative circles */}
-                <div className="absolute top-4 right-4 h-20 w-20 rounded-full bg-white/10 blur-xl"></div>
-                <div className="absolute bottom-4 left-4 h-16 w-16 rounded-full bg-white/10 blur-lg"></div>
-              </>
-            )}
-            {/* Notebook Icon */}
-            <div
-              className={`absolute top-4 left-4 h-12 w-12 rounded-xl bg-linear-to-br ${iconGradient} z-10 flex items-center justify-center shadow-lg`}
-            >
-              <BookOpen className="h-6 w-6 text-white" />
-            </div>
-            <div className="absolute top-3 right-3 z-10">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                onClick={handleOpenDeleteDialog}
-                disabled={deleteNotebookMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="bg-card flex flex-1 flex-col p-5">
-            <h3 className="group-hover:text-primary mb-2 line-clamp-2 text-base font-semibold transition-colors">
-              {notebook.name}
-            </h3>
-            {notebook.description && (
-              <p className="text-muted-foreground mb-4 line-clamp-2 flex-1 text-sm">
-                {notebook.description}
-              </p>
-            )}
-            <div className="text-muted-foreground mt-auto flex items-center justify-between border-t pt-3 text-xs">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                {format(notebook.createdAt, "d MMM yyyy")}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5" />
-                {notebook.sourceCount}{" "}
-                {notebook.sourceCount === 1 ? "source" : "sources"}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Notebook?</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold">{notebook.name}</span>? This will
-              permanently delete all notes, files, and messages in this
-              notebook. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              className="cursor-pointer"
-              disabled={deleteNotebookMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              className="cursor-pointer"
-              disabled={deleteNotebookMutation.isPending}
-            >
-              {deleteNotebookMutation.isPending
-                ? "Deleting..."
-                : "Delete Notebook"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    </TooltipProvider>
   );
 }
