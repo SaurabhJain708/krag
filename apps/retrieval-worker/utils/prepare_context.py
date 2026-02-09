@@ -2,7 +2,8 @@ from generated.db.fields import Json
 from lib.llm_client import remote_llm
 from schemas.context import Context, MessageDict
 from utils.db_client import get_db
-from utils.tokenizer_config import TOKEN_LIMIT, tokenizer
+from utils.tokenizer_config import TOKEN_LIMIT
+from utils.tools import count_tokens
 
 
 def build_summary_prompt(current_summary: str, new_messages: list[MessageDict]) -> str:
@@ -33,25 +34,6 @@ def build_summary_prompt(current_summary: str, new_messages: list[MessageDict]) 
         """.strip()
 
     return prompt
-
-
-def count_tokens(messages: list[MessageDict]) -> int:
-    """
-    Accurately counts tokens using Qwen's specific chat template.
-    """
-    if tokenizer is None:
-        raise RuntimeError("Tokenizer not initialized. Check tokenizer_config.py")
-    # apply_chat_template handles the special tokens (<|im_start|>, etc.)
-    # When tokenize=True, it returns a BatchEncoding object with input_ids attribute
-    token_result = tokenizer.apply_chat_template(
-        messages, tokenize=True, add_generation_prompt=False
-    )
-    # Extract the actual token IDs from the BatchEncoding object
-    # BatchEncoding has input_ids as an attribute (not dict key)
-    token_ids = (
-        token_result.input_ids if hasattr(token_result, "input_ids") else token_result
-    )
-    return len(token_ids)
 
 
 def extract_existing_context(
@@ -96,7 +78,13 @@ def extract_existing_context(
     return context, messages_to_summarise
 
 
-async def prepare_context(user_query: str, final_response: str, notebook_id: str):
+async def prepare_context(
+    user_query: str,
+    final_response: str,
+    notebook_id: str,
+    message_id: str,
+    user_message_id: str,
+):
     """
     Orchestrator function to interact with DB and Context Logic.
     """

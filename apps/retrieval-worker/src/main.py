@@ -63,12 +63,13 @@ async def chat(request: MessageData):
     notebook_id = request.notebook_id
     assistant_message_id = request.assistant_message_id
     content = request.content
+    user_message_id = request.user_message_id
 
     async def generate():
         """Generator function that yields status updates in SSE format."""
         try:
             async for status in process_request(
-                notebook_id, assistant_message_id, content
+                notebook_id, assistant_message_id, content, user_message_id
             ):
                 # Send status in SSE format: "data: status\n\n"
                 yield f"data: {status}\n\n"

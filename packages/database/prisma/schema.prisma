@@ -149,6 +149,7 @@ model Message {
   notebookId String
   notebook   Notebook    @relation(fields: [notebookId], references: [id], onDelete: Cascade)
   role       MessageRole
+  summary    String?
   failed     Boolean     @default(false)
 
   @@index([notebookId])

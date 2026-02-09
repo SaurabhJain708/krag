@@ -24,7 +24,7 @@ export const CreateMessage = protectedProcedure
     }
 
     // Create user message
-    await ctx.db.message.create({
+    const userMessage = await ctx.db.message.create({
       data: {
         notebookId,
         content,
@@ -77,6 +77,7 @@ export const CreateMessage = protectedProcedure
           notebook_id: notebookId,
           assistant_message_id: assistantMessage.id,
           content: content,
+          user_message_id: userMessage.id,
         }),
         signal: abortController.signal, // Connects fetch to the controller
       });

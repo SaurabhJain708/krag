@@ -6,6 +6,7 @@ from utils.get_parent_chunks import get_parent_chunks
 from utils.prepare_context import prepare_context
 from utils.prepare_question import prepare_question
 from utils.save_to_db import save_to_db
+from utils.summarise_messages import summarise_messages
 
 
 class ClientConnectionInterrupted(Exception):
@@ -14,7 +15,9 @@ class ClientConnectionInterrupted(Exception):
     pass
 
 
-async def process_request(notebook_id: str, assistant_message_id: str, content: str):
+async def process_request(
+    notebook_id: str, assistant_message_id: str, content: str, user_message_id: str
+):
     """
     Async generator that processes the request and yields status updates.
     Yields status strings that match the frontend expectations.
@@ -67,18 +70,28 @@ async def process_request(notebook_id: str, assistant_message_id: str, content: 
         final_response = finalise_response(extracted_content)
         print(f"Final response: {final_response}")
 
-        # 8. Save the response to the database
+        print(
+            f"Summarising messages for content: {content} and final response: {final_response}"
+        )
+        await summarise_messages(
+            content, final_response, assistant_message_id, user_message_id
+        )
+        print("Messages summarised")
+
+        # 8. Prepare the context
+        yield "preparing_context"
+        print(f"Preparing context for notebook: {notebook_id}")
+        await prepare_context(
+            content, final_response, notebook_id, assistant_message_id, user_message_id
+        )
+        print("Context prepared")
+
+        # 9. Save the response to the database
         yield "saving_to_db"
         print(
             f"Saving response to database for assistant message: {assistant_message_id}"
         )
         await save_to_db(assistant_message_id, final_response)
-
-        # 9. Prepare the context
-        yield "preparing_context"
-        print(f"Preparing context for notebook: {notebook_id}")
-        await prepare_context(content, final_response, notebook_id)
-        print("Context prepared")
 
         # 10. Cleanup
         yield "cleaning_up"
