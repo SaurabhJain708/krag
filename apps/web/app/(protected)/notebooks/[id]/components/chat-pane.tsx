@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import {
   ChevronRight,
   ChevronDown,
@@ -294,7 +295,13 @@ export function ChatPane({
                   {isLoading && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 ml-0 flex justify-start gap-3 duration-500 sm:ml-2 sm:gap-4">
                       <div className="from-primary/20 to-primary/5 ring-primary/30 z-10 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br shadow-lg ring-2 sm:h-12 sm:w-12">
-                        <Bot className="text-primary h-5 w-5 sm:h-6 sm:w-6" />
+                        <Image
+                          src="/favicon.ico"
+                          alt="Loading"
+                          width={24}
+                          height={24}
+                          className="h-full w-full"
+                        />
                       </div>
                       <div className="from-muted/80 to-muted/40 border-border/60 w-full rounded-xl border-2 bg-linear-to-br px-4 py-4 shadow-lg backdrop-blur-sm sm:max-w-[480px] sm:min-w-[320px] sm:px-6 sm:py-5">
                         <div className="flex flex-col gap-3 sm:gap-4">

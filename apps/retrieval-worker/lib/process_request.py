@@ -8,10 +8,17 @@ from utils.prepare_question import prepare_question
 from utils.save_to_db import save_to_db
 
 
+class ClientConnectionInterrupted(Exception):
+    """Raised when the client connection is cut during processing."""
+
+    pass
+
+
 async def process_request(notebook_id: str, assistant_message_id: str, content: str):
     """
     Async generator that processes the request and yields status updates.
     Yields status strings that match the frontend expectations.
+    Raises ClientConnectionInterrupted if the client connection is cut.
     """
     try:
         # 1. Prepare the question
@@ -75,7 +82,20 @@ async def process_request(notebook_id: str, assistant_message_id: str, content: 
 
         # 10. Cleanup
         yield "cleaning_up"
+
+    except (
+        GeneratorExit,
+        BrokenPipeError,
+        ConnectionResetError,
+        ConnectionAbortedError,
+    ) as e:
+        # Client disconnected - handle connection errors
+        print(f"Client connection was cut during processing: {e}")
+        await save_to_db(assistant_message_id, None, failed=True)
+        raise ClientConnectionInterrupted(
+            "Client connection was cut during processing"
+        ) from e
     except Exception as e:
         print(f"Error processing request: {e}")
         await save_to_db(assistant_message_id, None, failed=True)
-        raise e
+        raise

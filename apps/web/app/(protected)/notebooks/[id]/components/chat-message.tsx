@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Bot, User, AlertCircle, RefreshCw } from "lucide-react";
+import Image from "next/image";
+import { User, AlertCircle, RefreshCw } from "lucide-react";
 import { Streamdown } from "streamdown";
 import {
   Tooltip,
@@ -173,7 +174,13 @@ export function ChatMessage({
           {isFailed ? (
             <AlertCircle className="text-destructive h-4 w-4" />
           ) : (
-            <Bot className="text-primary h-4 w-4" />
+            <Image
+              src="/favicon.ico"
+              alt="Assistant"
+              width={24}
+              height={24}
+              className="h-full w-full"
+            />
           )}
         </div>
       )}
