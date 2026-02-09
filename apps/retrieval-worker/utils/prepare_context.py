@@ -79,11 +79,11 @@ async def prepare_context(
         messageIds = [msg["id"] for msg in messages_to_summarise]
         retrieved_messages = await db.message.find_many(
             where={"id": {"in": messageIds}},
-            select={"id": True, "summary": True, "role": True},
-            orderBy={"updatedAt": "desc"},
         )
         summaries = [
-            f"{msg['role'].upper()}: {msg['summary']}" for msg in retrieved_messages
+            f"{msg.role.upper()}: {msg.summary}"
+            for msg in retrieved_messages
+            if msg.summary  # Only include messages that have summaries
         ]
         existing_data.summaries.extend(summaries)
         _, summaries_that_fit, _ = extract_existing_context(existing_data.summaries)

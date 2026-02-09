@@ -57,16 +57,6 @@ export const CreateMessage = protectedProcedure
       requestSignal.addEventListener("abort", handleRequestAbort);
     }
 
-    // Helper to mark message failed
-    const markAssistantMessageFailed = async () => {
-      await ctx.db.message
-        .update({
-          where: { id: assistantMessage.id },
-          data: { failed: true },
-        })
-        .catch((e) => console.error("DB Update Error", e));
-    };
-
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
     try {
@@ -122,16 +112,9 @@ export const CreateMessage = protectedProcedure
           }
         }
       }
-    } catch (err) {
-      // --- 4. HANDLE ABORT ERRORS ---
-      if (err instanceof Error && err.name === "AbortError") {
-        console.log("Stream aborted by client or cleanup");
-        await markAssistantMessageFailed();
-      } else {
-        console.error("Stream failed", err);
-        await markAssistantMessageFailed();
-        throw err;
-      }
+    } catch {
+      // Ignore errors
+      console.error("Stream failed");
     } finally {
       // Ensure we always clean up
       if (requestSignal && handleRequestAbort) {
