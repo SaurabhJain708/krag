@@ -14,4 +14,5 @@ class ParentChunk(BaseModel):
 
     id: str
     content: str
+    cleanContent: str
     sourceId: str

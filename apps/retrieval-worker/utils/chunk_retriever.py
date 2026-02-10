@@ -85,19 +85,19 @@ async def retrive_vector_chunks(
 
 
 async def retrieve_chunks(
-    notebook_id: str, optimized_query: OptimizedQuery
+    notebook_id: str, optimized_query: list[OptimizedQuery]
 ) -> list[OptimizedQuery]:
 
     # Generate embeddings for all optimized queries in parallel to reduce latency.
     embedding_tasks = [
         remote_embedder.generate_embeddings.remote.aio(query.optimized_query)
-        for query in optimized_query.queries
+        for query in optimized_query
     ]
     embeddings_results = await asyncio.gather(*embedding_tasks)
-    for query, emb in zip(optimized_query.queries, embeddings_results, strict=True):
+    for query, emb in zip(optimized_query, embeddings_results, strict=True):
         query.embeddings = emb
 
-    limit_per_query = 100 // len(optimized_query.queries)
+    limit_per_query = 100 // len(optimized_query)
 
     # For each optimized query, fetch vector- and keyword-based parent IDs in parallel,
     # and do this concurrently across all queries to minimize latency.
@@ -106,15 +106,15 @@ async def retrieve_chunks(
             retrive_vector_chunks(notebook_id, query.embeddings or [], limit_per_query),
             retrieve_keyword_chunks(notebook_id, query.keywords, limit_per_query),
         )
-        for query in optimized_query.queries
+        for query in optimized_query
     ]
 
     parent_results = await asyncio.gather(*parent_tasks)
 
     for query, (vector_parent_ids, keyword_parent_ids) in zip(
-        optimized_query.queries, parent_results, strict=True
+        optimized_query, parent_results, strict=True
     ):
         # Attach the unique set of parent IDs associated with this optimized query.
         query.parentIds = list(set(vector_parent_ids) | set(keyword_parent_ids))
 
-    return optimized_query.queries
+    return optimized_query

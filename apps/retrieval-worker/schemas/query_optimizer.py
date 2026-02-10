@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from .chunks import ParentChunk
+
 
 class LLMOptimizedQuery(BaseModel):
 
@@ -26,6 +28,7 @@ class OptimizedQuery(LLMOptimizedQuery):
         default=None,
         description="Parent IDs for the optimized query.",
     )
+    parentChunks: list[ParentChunk]
 
 
 class QueryOptimizer(BaseModel):

@@ -81,6 +81,32 @@ vllm_image = (
     )
 )
 
+mxbai_v2_image = (
+    # 1. Use NVIDIA Devel Base (contains nvcc compiler)
+    modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.10")
+    # 2. Install build tools first
+    .pip_install("ninja", "packaging", "wheel", "setuptools")
+    # 3. Install Core Libs (WITH PINNED TRANSFORMERS)
+    .pip_install(
+        "torch==2.4.0",
+        "transformers==4.46.3",  # <--- CRITICAL FIX: Pinned stable version
+        "sentence-transformers>=3.0.0",
+        "numpy",
+        "accelerate",
+        "huggingface_hub",
+    )
+    # 4. Compile Flash Attention
+    .pip_install("flash-attn", extra_options="--no-build-isolation").env(
+        {"HF_HUB_CACHE": "/root/.cache/huggingface"}
+    )
+    # 5. Bake in model weights
+    .run_commands(
+        "python -c 'from huggingface_hub import snapshot_download; "
+        'snapshot_download("mixedbread-ai/mxbai-rerank-large-v2", '
+        'ignore_patterns=["*.msgpack", "*.h5", "*.tflite"])\''
+    )
+)
+
 # App
 app = modal.App("ingestion-worker")
 
@@ -307,7 +333,7 @@ class BGEM3EmbedderCPU:
         from FlagEmbedding import BGEM3FlagModel  # type: ignore
 
         # Load model in FP16 for speed and lower VRAM usage
-        self.model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True, device="cuda")
+        self.model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=False, device="cpu")
 
     @modal.method()
     def generate_embeddings(
@@ -453,3 +479,51 @@ class Qwen2_5_7BAWQ:
             final_output = request_output
 
         return final_output.outputs[0].text.strip()
+
+
+@app.cls(
+    gpu="L4",
+    image=mxbai_v2_image,
+    max_containers=1,
+    scaledown_window=60,
+    secrets=[modal.Secret.from_dotenv()],
+)
+@modal.concurrent(max_inputs=10)
+class MXBAIRerankerV2:
+    @modal.enter()
+    def setup(self):
+        import torch
+        from sentence_transformers import CrossEncoder
+
+        # Load mxbai-rerank-large-v2
+        # This uses the weights baked into the image.
+        # Transformers 4.46.3 (pinned in image) ensures Qwen weights load correctly.
+        self.model = CrossEncoder(
+            "mixedbread-ai/mxbai-rerank-large-v2",
+            device="cuda",
+            trust_remote_code=True,
+            automodel_args={
+                "torch_dtype": torch.float16,
+                "attn_implementation": "flash_attention_2",
+            },
+        )
+
+    @modal.method()
+    def rerank(self, query: str, documents: list[str], top_k: int = 10) -> list[dict]:
+        """
+        Reranks a list of documents (up to 8k tokens each).
+        """
+        if not documents:
+            return []
+
+        pairs = [[query, doc] for doc in documents]
+
+        # Batch size 4 is safe for 1.5B model with long context on L4
+        scores = self.model.predict(pairs, batch_size=4, show_progress_bar=False)
+
+        results = []
+        for doc, score in zip(documents, scores, strict=True):
+            results.append({"text": doc, "score": float(score)})
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results[:top_k]
