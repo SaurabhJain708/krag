@@ -1,5 +1,4 @@
 from utils.chunk_retriever import retrieve_chunks
-from utils.filter_chunks_using_llm import filter_chunks_using_llm
 from utils.final_extraction import final_extraction
 from utils.finalise_response import finalise_response
 from utils.get_parent_chunks import get_parent_chunks
@@ -40,17 +39,10 @@ async def process_request(
         )
         print(f"Retrieved chunks: {chunks}")
 
-        # 3. Filter the chunks using LLM
-        yield "filtering_chunks"
-        filtered_chunks = await filter_chunks_using_llm(
-            chunks, prepared_question.optimized_query
-        )
-        print(f"Filtered chunks: {filtered_chunks}")
-
         # 4. Get the parent chunks
         yield "getting_parent_chunks"
-        print(f"Getting parent chunks for filtered chunks: {filtered_chunks}")
-        parent_chunks = await get_parent_chunks(filtered_chunks)
+        print(f"Getting parent chunks for chunks: {chunks}")
+        parent_chunks = await get_parent_chunks(chunks)
         print(f"Parent chunks: {parent_chunks}")
 
         # 5. Extract the content

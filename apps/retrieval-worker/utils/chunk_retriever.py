@@ -2,13 +2,13 @@ import asyncio
 import re
 
 from lib.llm_client import remote_embedder
-from schemas import BaseChunk
+from schemas.query_optimizer import OptimizedQuery
 from utils.db_client import get_db
 
 
 async def retrieve_keyword_chunks(
-    notebook_id: str, keywords: list[str]
-) -> list[BaseChunk]:
+    notebook_id: str, keywords: list[str], limit: int = 20
+) -> list[str]:
     db = get_db()
     clean_keys = list({k.strip() for k in keywords if k.strip()})
 
@@ -36,61 +36,85 @@ async def retrieve_keyword_chunks(
 
     sql = f"""
         SELECT
-            dc.id,
-            dc.content,
             dc."parentIds"
         FROM "DocumentChunk" dc
         JOIN "Source" s ON dc."sourceId" = s.id
         WHERE s."notebookId" = $1
           AND dc.content ~* $2
         ORDER BY ({score_clause}) DESC
-        LIMIT 20;
+        LIMIT {limit};
     """
 
     chunks_raw = await db.query_raw(sql, *query_params)
 
-    return [BaseChunk.model_validate(chunk) for chunk in chunks_raw]
+    # Collect unique parent IDs from all matching chunks.
+    parent_ids: set[str] = set()
+    for row in chunks_raw:
+        # Each row is expected to have a "parentIds" array column.
+        for pid in row.get("parentIds") or []:
+            parent_ids.add(pid)
+
+    return list(parent_ids)
 
 
 async def retrive_vector_chunks(
-    notebook_id: str, embeddings: list[float]
-) -> list[BaseChunk]:
+    notebook_id: str, embeddings: list[float], limit: int = 20
+) -> list[str]:
     db = get_db()
     vector_chunks_raw = await db.query_raw(
         """
         SELECT
-            dc.id,
-            dc.content,
             dc."parentIds"
         FROM "DocumentChunk" dc
         JOIN "Source" s ON dc."sourceId" = s.id
         WHERE s."notebookId" = $1
         ORDER BY dc.embedding <=> $2::vector ASC
-        LIMIT 20;
+        LIMIT $3;
         """,
         notebook_id,
         embeddings,
+        limit,
     )
 
-    return [BaseChunk.model_validate(chunk) for chunk in vector_chunks_raw]
+    parent_ids: set[str] = set()
+    for row in vector_chunks_raw:
+        for pid in row.get("parentIds") or []:
+            parent_ids.add(pid)
+
+    return list(parent_ids)
 
 
 async def retrieve_chunks(
-    notebook_id: str, optimized_query: str, keywords: list[str]
-) -> list[BaseChunk]:
-    embeddings = await remote_embedder.generate_embeddings.remote.aio(optimized_query)
+    notebook_id: str, optimized_query: OptimizedQuery
+) -> list[OptimizedQuery]:
 
-    vector_chunks, keyword_chunks = await asyncio.gather(
-        retrive_vector_chunks(notebook_id, embeddings),
-        retrieve_keyword_chunks(notebook_id, keywords),
-    )
+    # Generate embeddings for all optimized queries in parallel to reduce latency.
+    embedding_tasks = [
+        remote_embedder.generate_embeddings.remote.aio(query.optimized_query)
+        for query in optimized_query.queries
+    ]
+    embeddings_results = await asyncio.gather(*embedding_tasks)
+    for query, emb in zip(optimized_query.queries, embeddings_results, strict=True):
+        query.embeddings = emb
 
-    unique_map = {}
+    limit_per_query = 100 // len(optimized_query.queries)
 
-    for chunk in vector_chunks:
-        unique_map[chunk.id] = chunk
+    # For each optimized query, fetch vector- and keyword-based parent IDs in parallel,
+    # and do this concurrently across all queries to minimize latency.
+    parent_tasks = [
+        asyncio.gather(
+            retrive_vector_chunks(notebook_id, query.embeddings or [], limit_per_query),
+            retrieve_keyword_chunks(notebook_id, query.keywords, limit_per_query),
+        )
+        for query in optimized_query.queries
+    ]
 
-    for chunk in keyword_chunks:
-        unique_map[chunk.id] = chunk
+    parent_results = await asyncio.gather(*parent_tasks)
 
-    return list(unique_map.values())
+    for query, (vector_parent_ids, keyword_parent_ids) in zip(
+        optimized_query.queries, parent_results, strict=True
+    ):
+        # Attach the unique set of parent IDs associated with this optimized query.
+        query.parentIds = list(set(vector_parent_ids) | set(keyword_parent_ids))
+
+    return optimized_query.queries

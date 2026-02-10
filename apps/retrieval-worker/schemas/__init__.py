@@ -5,10 +5,12 @@ from .chunks import BaseChunk, ParentChunk
 from .citations import Citation, TextWithCitations
 from .context import Context
 from .messages import MessageData
-from .query_optimizer import QueryOptimizer
+from .query_optimizer import LLMOptimizedQuery, OptimizedQuery, QueryOptimizer
 
 __all__ = [
     "MessageData",
+    "LLMOptimizedQuery",
+    "OptimizedQuery",
     "QueryOptimizer",
     "BaseChunk",
     "SelectedChunkIds",
