@@ -109,6 +109,22 @@ mxbai_v2_image = (
     )
 )
 
+
+vllm_image = (
+    modal.Image.debian_slim(python_version="3.10")
+    .pip_install(
+        "vllm==0.7.2",  # Upgrade to 0.7+ to escape dependency hell
+        "huggingface_hub==0.24.6",
+        "transformers>=4.48.0",  # Qwen 2.5 works best with newer transformers
+        "pycountry",
+        "tqdm==4.66.5",
+    )
+    .env({"HF_HUB_CACHE": "/root/.cache/huggingface", "CACHE_BUST": "11"})
+    .run_commands(
+        "python -c 'from huggingface_hub import snapshot_download; "
+        'snapshot_download("Qwen/Qwen2.5-7B-Instruct-AWQ")\''
+    )
+)
 # App
 app = modal.App("ingestion-worker")
 
@@ -214,13 +230,13 @@ class MarkerParser:
 @app.cls(
     gpu="L4",
     image=florence_image,
-    max_containers=1,
+    max_containers=3,
     retries=3,
     cpu=4,
     scaledown_window=60,
     secrets=[modal.Secret.from_dotenv()],
 )
-@modal.concurrent(max_inputs=8)
+@modal.concurrent(max_inputs=6)
 class FlorenceSummarizer:
     @modal.enter()
     def setup(self):
@@ -483,6 +499,131 @@ class Phi4Mini:
 
         request_id = str(uuid.uuid4())
 
+        results_generator = self.engine.generate(prompt, sampling_params, request_id)
+
+        final_output = None
+        async for request_output in results_generator:
+            final_output = request_output
+
+        return final_output.outputs[0].text.strip()
+
+
+@app.cls(
+    gpu="L4",
+    image=vllm_image,
+    max_containers=1,
+    timeout=600,
+    scaledown_window=60,
+    retries=3,
+    secrets=[modal.Secret.from_dotenv()],
+)
+@modal.concurrent(max_inputs=15)
+class Qwen2_5_7BAWQ:
+    @modal.enter()
+    def setup(self):
+        from transformers import AutoTokenizer, Qwen2Tokenizer
+        from vllm.engine.arg_utils import AsyncEngineArgs
+        from vllm.engine.async_llm_engine import AsyncLLMEngine
+
+        # --- 🩹 THE MONKEYPATCH FIX ---
+        # The "Slow" Qwen2Tokenizer is missing an attribute that vLLM 0.7.2 requires.
+        # We manually inject this property into the class definition at runtime.
+        # This prevents the AttributeError crash even if vLLM falls back to the slow tokenizer.
+        try:
+            if not hasattr(Qwen2Tokenizer, "all_special_tokens_extended"):
+                print(
+                    "🩹 Monkeypatching Qwen2Tokenizer to add missing 'all_special_tokens_extended'..."
+                )
+                # We map it to 'all_special_tokens', which exists and is effectively the same for inference
+                Qwen2Tokenizer.all_special_tokens_extended = property(
+                    lambda self: self.all_special_tokens
+                )
+        except Exception as e:
+            print(f"⚠️ Monkeypatch warning: {e}")
+        # --------------------------------
+
+        model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
+
+        # 1. Load the engine
+        engine_args = AsyncEngineArgs(
+            model=model_name,
+            quantization="awq",
+            dtype="half",
+            gpu_memory_utilization=0.90,
+            max_model_len=16384,
+            enforce_eager=True,
+            trust_remote_code=False,  # Keep this False!
+        )
+        self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+
+        self.model_config = self.engine.engine.model_config
+
+        # 2. Load tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_name, trust_remote_code=False
+        )
+
+    @modal.method()
+    async def generate(
+        self,
+        prompt: str,
+        max_tokens: int = 2048,
+        temperature: float = 0.1,
+        json_schema: str | None = None,
+    ) -> str:
+        import uuid
+
+        from vllm import SamplingParams
+
+        logits_processors = []
+
+        if json_schema:
+            try:
+                from vllm.model_executor.guided_decoding import (
+                    get_guided_decoding_logits_processor,
+                )
+            except ImportError:
+                print(
+                    "⚠️ Guided decoding library missing. JSON schema validation DISABLED."
+                )
+                get_guided_decoding_logits_processor = None
+
+            if get_guided_decoding_logits_processor:
+                # Mock the request object vLLM expects
+                class GuidedRequest:
+                    def __init__(self, schema):
+                        self.guided_json = schema
+                        self.guided_regex = None
+                        self.guided_choice = None
+                        self.guided_grammar = None
+                        self.guided_decoding_backend = "outlines"
+                        self.guided_whitespace_pattern = None
+                        self.backend = "outlines"
+                        self.json_object = None
+                        self.json = schema
+                        self.whitespace_pattern = None
+                        self.regex = None
+                        self.choice = None
+                        self.grammar = None
+
+                try:
+                    processor = await get_guided_decoding_logits_processor(
+                        GuidedRequest(json_schema), self.tokenizer, self.model_config
+                    )
+                    if processor:
+                        logits_processors.append(processor)
+                except Exception as e:
+                    print(f"⚠️ Schema compilation failed: {e}")
+
+        sampling_params = SamplingParams(
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=0.95,
+            repetition_penalty=1.15,
+            logits_processors=logits_processors,
+        )
+
+        request_id = str(uuid.uuid4())
         results_generator = self.engine.generate(prompt, sampling_params, request_id)
 
         final_output = None

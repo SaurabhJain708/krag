@@ -34,13 +34,16 @@ def build_prompt(filtered_query_results: list, user_query: str) -> str:
     # 2. System Prompt
     system_prompt = """You are a precise Knowledge Retrieval Chatbot.
         Your goal is to answer the user's question using ONLY the provided Source Context.
+        Always write a detailed, thorough answer that fully addresses every part of the
+        user's query. Prefer depth over brevity.
 
         ### RESPONSE FORMAT
         You must respond with a SINGLE valid JSON object. No markdown formatting around the JSON.
+        The answer MUST be detailed and multi-paragraph where appropriate.
         Schema:
         {
             "_reasoning": "Briefly explain which sources you selected and why.",
-            "text": "The answer to the user in GitHub Markdown. End with a short, relevant follow-up question.",
+            "text": "The answer to the user in GitHub Markdown. It must be detailed, covering all sub-questions thoroughly. End with a short, relevant follow-up question.",
             "citations": [
                 {
                     "citation": "1",
@@ -59,6 +62,12 @@ def build_prompt(filtered_query_results: list, user_query: str) -> str:
         3. **Chunk ID Extraction**:
         - The content contains markers like `<<<block_123>>>`.
         - You must extract `block_123` as the `chunkId`.
+        4. **Coverage**: Add as many citations as are reasonably helpful. Whenever a
+           factual statement, numerical value, definition, or claim can be grounded
+           in the context, attach a citation to it.
+        5. **Minimum Requirement**: Unless the context is completely empty, you MUST
+           return at least one citation object and at least one `[CITATION: N]`
+           marker in the text.
 
         ### EXAMPLE
         **Context:**

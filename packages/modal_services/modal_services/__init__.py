@@ -5,6 +5,7 @@ from .modal_service import (
     MarkerParser,
     MXBAIRerankerV2,
     Phi4Mini,
+    Qwen2_5_7BAWQ,
     app,
 )
 
@@ -16,4 +17,5 @@ __all__ = [
     "MarkerParser",
     "MXBAIRerankerV2",
     "Phi4Mini",
+    "Qwen2_5_7BAWQ",
 ]

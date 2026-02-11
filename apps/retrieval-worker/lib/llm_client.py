@@ -1,5 +1,5 @@
-from modal_services import BGEM3EmbedderCPU, MXBAIRerankerV2, Phi4Mini
+from modal_services import BGEM3EmbedderCPU, MXBAIRerankerV2, Qwen2_5_7BAWQ
 
-remote_llm = Phi4Mini()
+remote_llm = Qwen2_5_7BAWQ()
 remote_embedder = BGEM3EmbedderCPU()
 remote_filter = MXBAIRerankerV2()
