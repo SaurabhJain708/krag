@@ -440,11 +440,8 @@ class Phi4Mini:
 
         engine_args = AsyncEngineArgs(
             model=model_name,
-            # 3.8B model fits easily in BF16 on L4. No AWQ needed.
             dtype="bfloat16",
             gpu_memory_utilization=0.90,
-            # CRITICAL: L4 (24GB) cannot hold the full 128k context KV cache.
-            # 32k is a safe upper limit that allows for concurrent requests.
             max_model_len=32768,
             enforce_eager=False,
             trust_remote_code=True,  # Often needed for newer Microsoft architectures

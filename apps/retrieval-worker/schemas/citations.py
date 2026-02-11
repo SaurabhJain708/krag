@@ -55,6 +55,10 @@ class TextWithCitations(BaseModel):
     Use plain text or simple markdown formatting only.
     """
 
+    _reasoning: str = Field(
+        ...,
+        description="Explain why you are using the citations in the text.",
+    )
     text: str = Field(
         ...,
         description="The main text content with embedded citation markers in the "

@@ -1,78 +1,101 @@
-import os
 import re
 
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from lib.llm_client import remote_llm
 from pydantic import Field, create_model
-from schemas import Citation, ParentChunk, TextWithCitations
-
-SYSTEM_MESSAGE = """You are a RAG answer generator that must return a **single valid JSON object** matching the `TextWithCitations` schema.
-
-**CRITICAL: ABSOLUTELY NO BACKSLASHES**
-- **NEVER, EVER use the backslash character (\\) anywhere in your response.**
-- If you see LaTeX formulas like backslash-bracket or backslash-max or dollar signs with subscripts, convert them to plain text.
-- Examples:
-  - WRONG: LaTeX with backslashes or dollar signs with curly braces
-  - CORRECT: "d_model" or "d model" or "the model dimension"
-  - WRONG: Functions with backslashes like backslash-max
-  - CORRECT: "max(0, x)" or "maximum of 0 and x"
-- For math formulas, write them in plain English or use simple notation without backslashes or dollar signs.
-
-**Your tasks:**
-- Read the chunks below and answer the user's question.
-- Write the answer as GitHub markdown in the `text` field.
-- Use a **small number** of high‑quality citations (typically 3–10), not hundreds.
-
-**How to use citations:**
-- When you use information from a chunk, add a marker like `[CITATION: 1]` in the text.
-- **CRITICAL**: Each citation must be in its own separate bracket. NEVER combine multiple citations in a single bracket.
-  - CORRECT: `[CITATION: 1]` and `[CITATION: 2]` (separate brackets)
-  - WRONG: `[CITATION: 1, 2]` or `[CITATION: 2, 3]` (multiple citations in one bracket)
-  - If you need to cite multiple sources, use separate brackets: `[CITATION: 1] [CITATION: 2]`
-- In the `citations` array:
-  - `citation`: the citation number as a string, e.g. `"1"`.
-  - `sourceId`: MUST be the exact `SOURCE_ID` value from the chunk (this is the source document ID, NOT the CHUNK_ID).
-  - `chunkId`: MUST be the ID from the `<<<id>>>` markers in the chunk content. Look for patterns like `<<<123>>>content<<</123>>>` and use the ID `"123"` (as a string). This ID corresponds to the block ID in the source document.
-  - `brief_summary`: 1–2 sentence summary of what this citation adds.
-- Every object in `citations` **must** correspond to at least one `[CITATION: N]` marker in `text`.
-- **CRITICAL**:
-  - For `sourceId`, use the SOURCE_ID field, NOT the CHUNK_ID field. These are different values!
-  - For `chunkId`, extract the ID from the `<<<id>>>` markers in the chunk content. Do NOT use the parent CHUNK_ID or indices. Only use IDs that appear in `<<<id>>>` markers.
-
-**Important constraints:**
-- Respond with **only JSON**, no extra commentary.
-- The JSON **must be syntactically valid** (proper quotes, commas, and braces).
-- Do **not** invent fields outside the `TextWithCitations` schema.
-- **AGAIN: NO BACKSLASHES. If you see any backslash in the source chunks, convert it to plain text.**"""
+from schemas import Citation, TextWithCitations
+from schemas.filtered_chunks import FilteredQueryResult
 
 
-def format_chunks(parent_chunks: list[ParentChunk]) -> str:
-    """Format parent chunks into a string representation."""
-    chunks = []
-    for chunk in parent_chunks:
-        chunks.append(
-            f"CHUNK_ID: {chunk.id}\n"
-            f"SOURCE_ID: {chunk.sourceId}\n"
-            f"CONTENT: {chunk.content}\n"
-            "---"
+def build_prompt(filtered_query_results: list, user_query: str) -> str:
+    """
+    Manually builds the raw prompt string for Phi-4 Mini RAG.
+    Returns a single string formatted with <|system|>, <|user|>, and <|assistant|> tokens.
+    """
+
+    # 1. Format Context with XML tags
+    context_parts = []
+    for query_result in filtered_query_results:
+        context_parts.append(
+            f"<related_query>{query_result.optimized_query}</related_query>"
         )
-    return "\n".join(chunks)
 
+        for chunk in query_result.parent_chunks:
+            # Escape JSON-breaking characters
+            safe_content = chunk.content.replace("\\", "\\\\").replace('"', '\\"')
 
-def build_prompt_template() -> ChatPromptTemplate:
-    """Build the prompt template for final extraction."""
-    return ChatPromptTemplate.from_messages(
-        [
-            ("system", SYSTEM_MESSAGE),
-            (
-                "human",
-                "User Query: {user_query}\n\n"
-                "Source Chunks:\n{chunks_str}\n\n"
-                "Return a **single valid JSON object** that matches the `TextWithCitations` schema "
-                "for the answer to the query above. Do not include any extra text before or after the JSON.",
-            ),
-        ]
+            context_parts.append(
+                f'<source id="{chunk.sourceId}">\n'
+                f"  <content>{safe_content}</content>\n"
+                f"</source>"
+            )
+
+    context_str = "\n".join(context_parts)
+
+    # 2. System Prompt
+    system_prompt = """You are a precise Knowledge Retrieval Chatbot.
+        Your goal is to answer the user's question using ONLY the provided Source Context.
+
+        ### RESPONSE FORMAT
+        You must respond with a SINGLE valid JSON object. No markdown formatting around the JSON.
+        Schema:
+        {
+            "_reasoning": "Briefly explain which sources you selected and why.",
+            "text": "The answer to the user in GitHub Markdown. End with a short, relevant follow-up question.",
+            "citations": [
+                {
+                    "citation": "1",
+                    "sourceId": "The 'id' attribute from the <source> tag",
+                    "chunkId": "The ID found strictly inside <<<...>>> markers in the content",
+                    "brief_summary": "What this source contributed"
+                }
+            ]
+        }
+
+        ### CITATION RULES
+        1. **In-Text Markers**: Use `[CITATION: 1]` format.
+        2. **Strict Separation**: NEVER combine citations.
+        - CORRECT: `[CITATION: 1] [CITATION: 2]`
+        - WRONG: `[CITATION: 1, 2]`
+        3. **Chunk ID Extraction**:
+        - The content contains markers like `<<<block_123>>>`.
+        - You must extract `block_123` as the `chunkId`.
+
+        ### EXAMPLE
+        **Context:**
+        <source id="doc_A">
+        <content>The sky is blue <<<99>>> due to Rayleigh scattering.<<</99>>></content>
+        <content>The sky is red <<<100>>> due to the same reason.<<</100>>></content>
+        </source>
+
+        **Output:**
+        {
+            "_reasoning": "Found the explanation for sky color in doc_A, block idx_99.",
+            "text": "The sky appears blue because of Rayleigh scattering [CITATION: 1].\\n\\n**Did you know this also affects sunset colors?**",
+            "citations": [
+                { "citation": "1", "sourceId": "doc_A", "chunkId": "99", "brief_summary": "This citation explains Rayleigh scattering." }
+            ]
+        }
+        """
+
+    # 3. User Prompt
+    user_message_content = f"""
+        Answer this query using the context below.
+
+        USER QUERY: {user_query}
+
+        SOURCE CONTEXT:
+        {context_str}
+        """
+
+    # 4. Manual Token Construction
+    # We strictly follow the Phi-4 format: <|system|>...<|end|><|user|>...<|end|><|assistant|>
+    final_prompt = (
+        f"<|system|>\n{system_prompt}\n<|end|>\n"
+        f"<|user|>\n{user_message_content}\n<|end|>\n"
+        f"<|assistant|>"
     )
+
+    return final_prompt
 
 
 def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCitations]:
@@ -101,6 +124,10 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
     text_fields = TextWithCitations.model_fields
     TextWithCitationsWithEnum = create_model(
         "TextWithCitations",
+        _reasoning=(
+            str,
+            Field(..., description=text_fields["_reasoning"].description),
+        ),
         text=(str, Field(..., description=text_fields["text"].description)),
         citations=(
             list[CitationWithEnum],
@@ -110,16 +137,6 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
     )
 
     return TextWithCitationsWithEnum
-
-
-def create_structured_llm(model: type[TextWithCitations]) -> ChatGoogleGenerativeAI:
-    """Create a Gemini LLM configured with structured output."""
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        temperature=0.1,
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-    )
-    return llm.with_structured_output(model, method="json_schema")
 
 
 def deduplicate_citations(
@@ -169,28 +186,36 @@ def deduplicate_citations(
 
 
 async def final_extraction(
-    parent_chunks: list[ParentChunk], user_query: str
+    filtered_query_results: list[FilteredQueryResult], user_query: str
 ) -> TextWithCitations:
-    """Extract final answer with citations from parent chunks using Gemini."""
-    # Format chunks and extract unique source IDs
-    chunks_str = format_chunks(parent_chunks)
-    unique_source_ids = list({chunk.sourceId for chunk in parent_chunks})
+    """Extract final answer with citations from filtered query results using Gemini."""
+    # Extract unique source IDs from all chunks across all query results
+    unique_source_ids = list(
+        {
+            chunk.sourceId
+            for query_result in filtered_query_results
+            for chunk in query_result.parent_chunks
+        }
+    )
 
     # Create model with enum constraint and structured LLM
     TextWithCitationsModel = create_text_with_citations_model(unique_source_ids)
-    structured_llm = create_structured_llm(TextWithCitationsModel)
 
-    # Build and format prompt
-    prompt_template = build_prompt_template()
-    formatted_messages = prompt_template.format_messages(
-        user_query=user_query, chunks_str=chunks_str
-    )
+    # Build prompt messages
+    prompt = build_prompt(filtered_query_results, user_query)
+
+    schema_str = TextWithCitationsModel.model_json_schema()
 
     # Invoke model
-    result = await structured_llm.ainvoke(formatted_messages)
+    result = await remote_llm.generate.remote.aio(
+        prompt=prompt,
+        max_tokens=20000,
+        temperature=0.5,
+        json_schema=schema_str,
+    )
 
     # Explicit Pydantic validation
-    validated_result = TextWithCitationsModel.model_validate(result.model_dump())
+    validated_result = TextWithCitationsModel.model_validate_json(result)
 
     # Deduplicate citations that reference the same chunk
     deduplicated_result = deduplicate_citations(validated_result)
