@@ -509,21 +509,38 @@ class MXBAIRerankerV2:
         )
 
     @modal.method()
-    def rerank(self, query: str, documents: list[str], top_k: int = 10) -> list[dict]:
+    def rerank(
+        self, query: str, documents: list[dict[str, str]], top_k: int = 10
+    ) -> list[dict[str, str]]:
         """
         Reranks a list of documents (up to 8k tokens each).
+        Accepts documents in format: [{"content": str, "id": str}, ...]
+        Returns documents in the same format, sorted by relevance score.
         """
         if not documents:
             return []
 
-        pairs = [[query, doc] for doc in documents]
+        # Extract content strings for model prediction
+        doc_contents = [doc["content"] for doc in documents]
+        pairs = [[query, doc_content] for doc_content in doc_contents]
 
         # Batch size 4 is safe for 1.5B model with long context on L4
         scores = self.model.predict(pairs, batch_size=4, show_progress_bar=False)
 
+        # Combine documents with their scores
         results = []
         for doc, score in zip(documents, scores, strict=True):
-            results.append({"text": doc, "score": float(score)})
+            results.append(
+                {
+                    "content": doc["content"],
+                    "id": doc["id"],
+                    "score": float(score),
+                }
+            )
 
+        # Sort by score (descending) and return top_k
         results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:top_k]
+        top_results = results[:top_k]
+
+        # Return in the same format as input (without score)
+        return [{"content": r["content"], "id": r["id"]} for r in top_results]

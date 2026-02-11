@@ -1,0 +1,11 @@
+[
+  {
+    "optimized_query": "What is the capital of France?",
+    "parent_chunks": [
+      {
+        "content": "France is a country in Europe.",
+        "sourceId": "1"
+      }
+    ]
+  }
+]

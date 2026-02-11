@@ -15,7 +15,7 @@ class ClientConnectionInterrupted(Exception):
 
 
 async def process_request(
-    notebook_id: str, assistant_message_id: str, content: str, user_message_id: str
+    notebook_id: str, assistant_message_id: str, user_query: str, user_message_id: str
 ):
     """
     Async generator that processes the request and yields status updates.
@@ -25,8 +25,8 @@ async def process_request(
     try:
         # 1. Prepare the question
         yield "preparing_question"
-        print(f"Preparing question for content: {content}")
-        prepared_question = await prepare_question(content, notebook_id)
+        print(f"Preparing question for content: {user_query}")
+        prepared_question = await prepare_question(user_query, notebook_id)
         print(f"Prepared question: {prepared_question}")
 
         # 2. Retrieve the chunks
@@ -50,7 +50,7 @@ async def process_request(
         print(
             f"Extracting content for parent chunks: {parent_chunks} and query: {prepared_question.optimized_query}"
         )
-        extracted_content = await final_extraction(parent_chunks, content)
+        extracted_content = await final_extraction(parent_chunks, user_query)
         print(f"Extracted content: {extracted_content}")
 
         # 6. Summarize content (if needed)
@@ -63,10 +63,10 @@ async def process_request(
         print(f"Final response: {final_response}")
 
         print(
-            f"Summarising messages for content: {content} and final response: {final_response}"
+            f"Summarising messages for content: {user_query} and final response: {final_response}"
         )
         await summarise_messages(
-            content, final_response, assistant_message_id, user_message_id
+            user_query, final_response, assistant_message_id, user_message_id
         )
         print("Messages summarised")
 
@@ -74,7 +74,11 @@ async def process_request(
         yield "preparing_context"
         print(f"Preparing context for notebook: {notebook_id}")
         await prepare_context(
-            content, final_response, notebook_id, assistant_message_id, user_message_id
+            user_query,
+            final_response,
+            notebook_id,
+            assistant_message_id,
+            user_message_id,
         )
         print("Context prepared")
 
