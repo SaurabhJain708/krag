@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer
 
 # --- CONFIGURATION ---
-MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
+MODEL_ID = "microsoft/Phi-4-mini-instruct"  # Matches the actual LLM model being used
 TOKEN_LIMIT = 8000
 
 # --- TOKENIZER SETUP ---

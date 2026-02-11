@@ -124,9 +124,13 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
     text_fields = TextWithCitations.model_fields
     TextWithCitationsWithEnum = create_model(
         "TextWithCitations",
-        _reasoning=(
+        reasoning=(
             str,
-            Field(..., description=text_fields["_reasoning"].description),
+            Field(
+                ...,
+                alias="_reasoning",
+                description=text_fields["reasoning"].description,
+            ),
         ),
         text=(str, Field(..., description=text_fields["text"].description)),
         citations=(

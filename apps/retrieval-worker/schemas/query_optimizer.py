@@ -33,8 +33,9 @@ class OptimizedQuery(LLMOptimizedQuery):
 
 class QueryOptimizer(BaseModel):
 
-    _reasoning: str = Field(
+    reasoning: str = Field(
         ...,
+        alias="_reasoning",
         description="Explain why you are splitting or combining the queries.",
     )
     queries: list[LLMOptimizedQuery] = Field(
