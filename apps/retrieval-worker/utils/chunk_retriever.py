@@ -30,7 +30,10 @@ async def retrieve_keyword_chunks(
     for i, key in enumerate(clean_keys):
         param_index = i + 3
         score_parts.append(f"(dc.content ~* ${param_index})::int")
-        query_params.append(key)
+        # Escape each keyword so that Postgres treats it as a literal in the
+        # `~*` regex, avoiding errors when the keyword contains regex metacharacters
+        # such as `{`, `}`, `+`, etc.
+        query_params.append(re.escape(key))
 
     score_clause = " + ".join(score_parts)
 

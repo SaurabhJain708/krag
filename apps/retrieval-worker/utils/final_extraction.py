@@ -124,10 +124,13 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
     text_fields = TextWithCitations.model_fields
     TextWithCitationsWithEnum = create_model(
         "TextWithCitations",
+        # Reasoning is helpful but not strictly required for downstream logic,
+        # and some model outputs may omit it. Make it optional here to avoid
+        # hard failures on otherwise useful answers.
         reasoning=(
-            str,
+            str | None,
             Field(
-                ...,
+                default=None,
                 alias="_reasoning",
                 description=text_fields["reasoning"].description,
             ),

@@ -28,7 +28,12 @@ class OptimizedQuery(LLMOptimizedQuery):
         default=None,
         description="Parent IDs for the optimized query.",
     )
-    parentChunks: list[ParentChunk]
+    # Parent chunks are populated later in the pipeline; they are not
+    # present in the initial LLM output and therefore must be optional here.
+    parentChunks: list[ParentChunk] | None = Field(
+        default=None,
+        description="Parent chunks attached after retrieval.",
+    )
 
 
 class QueryOptimizer(BaseModel):

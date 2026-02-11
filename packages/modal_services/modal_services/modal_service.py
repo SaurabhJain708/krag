@@ -65,16 +65,18 @@ bge_m3_image = (
     )
 )
 
-vllm_image = (
-    modal.Image.debian_slim(python_version="3.10")
+vllm_json_image = (
+    modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.10")
+    .apt_install("git")
     .pip_install(
-        "vllm==0.7.2",
-        "huggingface_hub==0.24.6",
-        "transformers>=4.48.0",
+        "huggingface_hub",
         "pycountry",
         "tqdm==4.66.5",
     )
-    .env({"HF_HUB_CACHE": "/root/.cache/huggingface", "CACHE_BUST": "12"})
+    # FORCE THESE TWO TOGETHER:
+    # This specific combo fixes the 'TokenizersBackend' AttributeError
+    .pip_install(["vllm==0.7.3", "transformers==4.48.3"])
+    .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
     .run_commands(
         "python -c 'from huggingface_hub import snapshot_download; "
         'snapshot_download("microsoft/Phi-4-mini-instruct")\''
@@ -422,8 +424,8 @@ class MXBAIRerankerV2:
 
 
 @app.cls(
-    gpu="L4",  # A T4 (16GB) is also sufficient for this 3.8B model
-    image=vllm_image,
+    gpu="L4",
+    image=vllm_json_image,  # Must be the image with vllm==0.7.3 + transformers==4.48.3
     max_containers=1,
     timeout=600,
     scaledown_window=60,
@@ -443,18 +445,11 @@ class Phi4Mini:
             dtype="bfloat16",
             gpu_memory_utilization=0.90,
             max_model_len=32768,
-            enforce_eager=False,
-            trust_remote_code=True,  # Often needed for newer Microsoft architectures
+            enforce_eager=True,
+            trust_remote_code=True,
         )
 
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
-
-        # Load tokenizer for validation if needed, though vLLM handles generation
-        from transformers import AutoTokenizer
-
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name, trust_remote_code=True
-        )
 
     @modal.method()
     async def generate(
@@ -462,53 +457,32 @@ class Phi4Mini:
         prompt: str,
         max_tokens: int = 2048,
         temperature: float = 0.1,
-        json_schema: str | None = None,
+        json_schema: str | dict | None = None,
     ) -> str:
         import uuid
 
         from vllm import SamplingParams
 
-        logits_processors = []
+        # 1. Import the wrapper class required by the Python API
+        from vllm.sampling_params import GuidedDecodingParams
 
-        # JSON Schema handling (same as your Qwen function)
+        # 2. Prepare the guided decoding object
+        guided_options = None
         if json_schema:
-            try:
-                from vllm.model_executor.guided_decoding import (
-                    get_guided_decoding_logits_processor,
-                )
+            # You can pass a dict (JSON schema) or a regex string here
+            guided_options = GuidedDecodingParams(json=json_schema)
 
-                # Simple mock to satisfy vLLM's guided decoding signature
-                class GuidedRequest:
-                    def __init__(self, schema):
-                        self.guided_json = schema
-                        self.guided_regex = None
-                        self.guided_choice = None
-                        self.guided_grammar = None
-                        self.guided_decoding_backend = "outlines"
-                        self.guided_whitespace_pattern = None
-
-                processor = await get_guided_decoding_logits_processor(
-                    GuidedRequest(json_schema),
-                    self.tokenizer,
-                    self.engine.engine.model_config,
-                )
-                if processor:
-                    logits_processors.append(processor)
-            except Exception as e:
-                print(f"⚠️ Schema compilation failed: {e}")
-
+        # 3. Use 'guided_decoding' (NOT guided_json)
         sampling_params = SamplingParams(
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=0.95,
-            repetition_penalty=1.1,  # Phi models often benefit from slight penalty
-            logits_processors=logits_processors,
+            repetition_penalty=1.1,
+            guided_decoding=guided_options,
         )
 
         request_id = str(uuid.uuid4())
 
-        # Note: If passing raw text, ensure it follows Phi-4 chat format or use the tokenizer template before calling this.
-        # If just testing, raw text works but may be less chatty.
         results_generator = self.engine.generate(prompt, sampling_params, request_id)
 
         final_output = None

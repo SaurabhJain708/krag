@@ -55,8 +55,11 @@ class TextWithCitations(BaseModel):
     Use plain text or simple markdown formatting only.
     """
 
-    reasoning: str = Field(
-        ...,
+    # Reasoning is optional and ignored by downstream logic; the core
+    # pipeline only relies on `text` and `citations`. We keep this field
+    # for backwards compatibility but do not require the model to output it.
+    reasoning: str | None = Field(
+        default=None,
         alias="_reasoning",
         description="Explain why you are using the citations in the text.",
     )

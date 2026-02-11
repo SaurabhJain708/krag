@@ -28,25 +28,25 @@ async def process_request(
         yield "preparing_question"
         print(f"Preparing question: {user_query}")
         prepared_question = await prepare_question(user_query, notebook_id)
-        print(f"Prepared {len(prepared_question)} optimized queries")
+        print(f"Prepared {prepared_question} optimized queries")
 
         # 2. Retrieve the chunks
         yield "retrieving_chunks"
         print(f"Retrieving chunks for notebook: {notebook_id}")
         chunks = await retrieve_chunks(notebook_id, prepared_question)
-        print(f"Retrieved chunks for {len(chunks)} queries")
+        print(f"Retrieved chunks for {chunks} queries")
 
         # 4. Get the parent chunks
         yield "getting_parent_chunks"
         print("Getting parent chunks")
         parent_chunks = await get_parent_chunks(chunks)
-        print(f"Got parent chunks for {len(parent_chunks)} queries")
+        print(f"Got parent chunks for {parent_chunks} queries")
 
         # 5. Filter the parent chunks
         yield "filtering_parent_chunks"
         print("Filtering parent chunks")
         filtered_parent_chunks = await filter_parent_chunks(parent_chunks)
-        print(f"Filtered to {len(filtered_parent_chunks)} query results")
+        print(f"Filtered to {filtered_parent_chunks} query results")
 
         # 5. Extract the content
         yield "extracting_content"
@@ -57,7 +57,7 @@ async def process_request(
         # 7. Generate the response
         yield "generating_response"
         final_response = finalise_response(extracted_content)
-        print(f"Final response generated ({len(final_response)} chars)")
+        print(f"Final response generated ({final_response} chars)")
 
         print("Summarising messages")
         yield "summarizing_content"
