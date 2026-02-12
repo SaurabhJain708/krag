@@ -4,13 +4,12 @@ import { supabase } from "@/lib/supabase";
 export const DeleteAllData = protectedProcedure.mutation(async ({ ctx }) => {
   const userId = ctx.session.user.id;
 
-  // Get all sources and notebooks before deleting to get file paths
   const sources = await ctx.db.source.findMany({
     where: {
       userId: userId,
     },
     select: {
-      path: true,
+      image_paths: true,
     },
   });
 
@@ -26,10 +25,9 @@ export const DeleteAllData = protectedProcedure.mutation(async ({ ctx }) => {
   // Delete files from Supabase storage
   const filePathsToDelete: string[] = [];
 
-  // Add source file paths
   sources.forEach((source) => {
-    if (source.path) {
-      filePathsToDelete.push(source.path);
+    if (source.image_paths?.length) {
+      filePathsToDelete.push(...source.image_paths);
     }
   });
 

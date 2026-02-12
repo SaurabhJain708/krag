@@ -17,14 +17,15 @@ export const deleteSource = protectedProcedure
         id: sourceId,
         userId: userId,
       },
+      select: {
+        image_paths: true,
+        id: true,
+      },
     });
     if (!source) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Source not found" });
     }
-    const imagePaths = source.image_paths.map(
-      (imagePath) => `${userId}/${imagePath}`
-    );
-    await supabase.storage.from("files").remove(imagePaths);
+    await supabase.storage.from("files").remove(source.image_paths);
     await ctx.db.source.delete({
       where: {
         id: source.id,
