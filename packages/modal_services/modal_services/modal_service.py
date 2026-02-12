@@ -125,6 +125,23 @@ vllm_image = (
         'snapshot_download("Qwen/Qwen2.5-7B-Instruct-AWQ")\''
     )
 )
+
+mistral_nemo_awq_image = (
+    modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.10")
+    .apt_install("git")
+    .pip_install(
+        "huggingface_hub",
+        "pycountry",
+        "tqdm==4.66.5",
+    )
+    .pip_install(["vllm==0.7.3", "transformers==4.48.3"])
+    .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
+    .run_commands(
+        "python -c 'from huggingface_hub import snapshot_download; "
+        # CHANGED: Use casperhansen's repo which is public and reliable for AWQ
+        'snapshot_download("casperhansen/mistral-nemo-instruct-2407-awq")\''
+    )
+)
 # App
 app = modal.App("ingestion-worker")
 
@@ -624,6 +641,72 @@ class Qwen2_5_7BAWQ:
         )
 
         request_id = str(uuid.uuid4())
+        results_generator = self.engine.generate(prompt, sampling_params, request_id)
+
+        final_output = None
+        async for request_output in results_generator:
+            final_output = request_output
+
+        return final_output.outputs[0].text.strip()
+
+
+@app.cls(
+    gpu="L4",  # Fits easily in 24GB VRAM with INT4 (Model is ~8GB)
+    image=mistral_nemo_awq_image,
+    max_containers=1,
+    timeout=600,
+    scaledown_window=60,
+    secrets=[modal.Secret.from_dotenv()],
+)
+@modal.concurrent(max_inputs=10)
+class MistralNemoAWQ:
+    @modal.enter()
+    def setup(self):
+        from vllm.engine.arg_utils import AsyncEngineArgs
+        from vllm.engine.async_llm_engine import AsyncLLMEngine
+
+        # Using a reliable third-party quantization for Nemo
+        model_name = "casperhansen/mistral-nemo-instruct-2407-awq"
+
+        engine_args = AsyncEngineArgs(
+            model=model_name,
+            quantization="awq",
+            dtype="half",  # AWQ kernels typically run in half precision
+            gpu_memory_utilization=0.90,
+            max_model_len=16384,  # L4 has plenty of RAM now, but 16k is a safe/fast default
+            enforce_eager=True,
+            trust_remote_code=True,
+        )
+
+        self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+
+    @modal.method()
+    async def generate(
+        self,
+        prompt: str,
+        max_tokens: int = 2048,
+        temperature: float = 0.1,
+        json_schema: str | dict | None = None,
+    ) -> str:
+        import uuid
+
+        from vllm import SamplingParams
+        from vllm.sampling_params import GuidedDecodingParams
+
+        guided_options = None
+        if json_schema:
+            guided_options = GuidedDecodingParams(json=json_schema)
+
+        sampling_params = SamplingParams(
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=0.95,
+            repetition_penalty=1.1,
+            guided_decoding=guided_options,
+        )
+
+        request_id = str(uuid.uuid4())
+
         results_generator = self.engine.generate(prompt, sampling_params, request_id)
 
         final_output = None

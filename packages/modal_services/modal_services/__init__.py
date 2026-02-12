@@ -3,6 +3,7 @@ from .modal_service import (
     BGEM3EmbedderCPU,
     FlorenceSummarizer,
     MarkerParser,
+    MistralNemoAWQ,
     MXBAIRerankerV2,
     Phi4Mini,
     Qwen2_5_7BAWQ,
@@ -18,4 +19,5 @@ __all__ = [
     "MXBAIRerankerV2",
     "Phi4Mini",
     "Qwen2_5_7BAWQ",
+    "MistralNemoAWQ",
 ]

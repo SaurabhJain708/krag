@@ -97,11 +97,10 @@ def build_prompt(filtered_query_results: list, user_query: str) -> str:
         """
 
     # 4. Manual Token Construction
-    # We strictly follow the Phi-4 format: <|system|>...<|end|><|user|>...<|end|><|assistant|>
     final_prompt = (
-        f"<|system|>\n{system_prompt}\n<|end|>\n"
-        f"<|user|>\n{user_message_content}\n<|end|>\n"
-        f"<|assistant|>"
+        f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+        f"<|im_start|>user\n{user_message_content}<|im_end|>\n"
+        f"<|im_start|>assistant\n"
     )
 
     return final_prompt
@@ -225,7 +224,7 @@ async def final_extraction(
     # Invoke model
     result = await remote_llm.generate.remote.aio(
         prompt=prompt,
-        max_tokens=20000,
+        max_tokens=5000,
         temperature=0.5,
         json_schema=schema_str,
     )
