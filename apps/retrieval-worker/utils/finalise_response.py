@@ -55,7 +55,21 @@ def replace_with_citation(text_with_citations: TextWithCitations) -> str:
     return final_response
 
 
+def clean_response(text: str) -> str:
+    """
+    Remove backslashes and forward slashes that appear directly before span tags,
+    e.g. '\\<span', '/<span', '\\</span', or '/</span', without touching other
+    slashes or backslashes elsewhere.
+    """
+    # Remove any combination of backslashes and forward slashes before opening span tags
+    text = re.sub(r"[\\/]+(<span\b)", r"\1", text)
+    # Remove any combination of backslashes and forward slashes before closing span tags
+    text = re.sub(r"[\\/]+(</span>)", r"\1", text)
+    return text
+
+
 def finalise_response(text_with_citations: TextWithCitations) -> str:
     final_response = replace_with_citation(text_with_citations)
     final_response = renumber_citations(final_response)
+    final_response = clean_response(final_response)
     return final_response
