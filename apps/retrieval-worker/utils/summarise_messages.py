@@ -1,12 +1,19 @@
 import asyncio
 
+from generated.db.enums import Encryption
 from lib.llm_client import remote_llm
 from utils.db_client import get_db
+from utils.encryption import encrypt_data
 from utils.tools import count_tokens_str
 
 
 async def summarise_messages(
-    user_query: str, final_response: str, message_id: str, user_message_id: str
+    user_query: str,
+    final_response: str,
+    message_id: str,
+    user_message_id: str,
+    encryption_type: str,
+    encryption_key: str | None,
 ):
     user_message_tokens = count_tokens_str(user_query)
     final_response_tokens = count_tokens_str(final_response)
@@ -26,6 +33,12 @@ async def summarise_messages(
             max_tokens=400,
             temperature=1.0,
         )
+
+    if encryption_type != Encryption.NotEncrypted:
+        if not encryption_key:
+            raise ValueError("encryption_key is required when encryption is enabled")
+        user_query = encrypt_data(user_query, encryption_key)
+        final_response = encrypt_data(final_response, encryption_key)
 
     db = get_db()
     await asyncio.gather(

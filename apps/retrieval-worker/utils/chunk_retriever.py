@@ -1,6 +1,7 @@
 import asyncio
 import re
 
+from generated.db.enums import Encryption
 from lib.llm_client import remote_embedder
 from schemas.query_optimizer import OptimizedQuery
 from utils.db_client import get_db
@@ -60,7 +61,7 @@ async def retrieve_keyword_chunks(
     return list(parent_ids)
 
 
-async def retrive_vector_chunks(
+async def retrieve_vector_chunks(
     notebook_id: str, embeddings: list[float], limit: int = 20
 ) -> list[str]:
     db = get_db()
@@ -88,8 +89,11 @@ async def retrive_vector_chunks(
 
 
 async def retrieve_chunks(
-    notebook_id: str, optimized_query: list[OptimizedQuery]
+    notebook_id: str, optimized_query: list[OptimizedQuery], encryption_type: str
 ) -> list[OptimizedQuery]:
+
+    if not optimized_query:
+        return optimized_query
 
     # Generate embeddings for all optimized queries in parallel to reduce latency.
     embedding_tasks = [
@@ -104,20 +108,36 @@ async def retrieve_chunks(
 
     # For each optimized query, fetch vector- and keyword-based parent IDs in parallel,
     # and do this concurrently across all queries to minimize latency.
-    parent_tasks = [
-        asyncio.gather(
-            retrive_vector_chunks(notebook_id, query.embeddings or [], limit_per_query),
-            retrieve_keyword_chunks(notebook_id, query.keywords, limit_per_query),
-        )
-        for query in optimized_query
-    ]
+    if encryption_type != Encryption.AdvancedEncryption:
+        parent_tasks = [
+            asyncio.gather(
+                retrieve_vector_chunks(
+                    notebook_id, query.embeddings or [], limit_per_query
+                ),
+                retrieve_keyword_chunks(notebook_id, query.keywords, limit_per_query),
+            )
+            for query in optimized_query
+        ]
+    else:
+        parent_tasks = [
+            asyncio.gather(
+                retrieve_vector_chunks(
+                    notebook_id, query.embeddings or [], limit_per_query
+                ),
+            )
+            for query in optimized_query
+        ]
 
     parent_results = await asyncio.gather(*parent_tasks)
 
-    for query, (vector_parent_ids, keyword_parent_ids) in zip(
-        optimized_query, parent_results, strict=True
-    ):
-        # Attach the unique set of parent IDs associated with this optimized query.
-        query.parentIds = list(set(vector_parent_ids) | set(keyword_parent_ids))
+    for query, result in zip(optimized_query, parent_results, strict=True):
+        if encryption_type != Encryption.AdvancedEncryption:
+            vector_parent_ids, keyword_parent_ids = result
+            # Attach the unique set of parent IDs associated with this optimized query.
+            query.parentIds = list(set(vector_parent_ids) | set(keyword_parent_ids))
+        else:
+            vector_parent_ids = result[0]
+            # Attach the parent IDs from vector search only.
+            query.parentIds = list(set(vector_parent_ids))
 
     return optimized_query

@@ -25,3 +25,24 @@ def encrypt_data(data: str, password: str) -> str:
     ciphertext = ciphertext_with_tag[:-16]
 
     return base64.b64encode(iv + tag + ciphertext).decode("utf-8")
+
+
+def decrypt_data(token: str, password: str) -> str:
+    try:
+        data = base64.b64decode(token)
+
+        # 1. Extract parts (Must match TypeScript order)
+        iv = data[:12]
+        tag = data[12:28]
+        ciphertext = data[28:]
+
+        # 2. Re-create key
+        key = get_key(password)
+        aesgcm = AESGCM(key)
+
+        # 3. Decrypt
+        # Python expects (Ciphertext + Tag) as input
+        return aesgcm.decrypt(iv, ciphertext + tag, None).decode("utf-8")
+
+    except Exception:
+        return "Decryption Failed (Wrong Password or Corrupt Token)"

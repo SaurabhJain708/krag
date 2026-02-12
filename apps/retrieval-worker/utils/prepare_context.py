@@ -1,6 +1,8 @@
+from generated.db.enums import Encryption
 from generated.db.fields import Json
 from schemas.context import Context
 from utils.db_client import get_db
+from utils.encryption import decrypt_data, encrypt_data
 from utils.tokenizer_config import TOKEN_LIMIT
 from utils.tools import count_tokens_str
 
@@ -44,6 +46,7 @@ async def prepare_context(
     notebook_id: str,
     message_id: str,
     user_message_id: str,
+    encryption_key: str | None,
 ):
     """
     Orchestrator function to interact with DB and Context Logic.
@@ -52,7 +55,35 @@ async def prepare_context(
 
     record = await db.notebook.find_unique(where={"id": notebook_id})
 
+    # Check encryption status and key before decrypting
+    is_encrypted = record and record.encryption != Encryption.NotEncrypted
+    if is_encrypted and not encryption_key:
+        raise ValueError("encryption_key is required when encryption is enabled")
+
     existing_data = record.context if (record and record.context) else None
+    if existing_data and record and record.encryption != Encryption.NotEncrypted:
+        if not encryption_key:
+            raise ValueError("encryption_key is required when encryption is enabled")
+        # Ensure structure exists before decrypting
+        if "messages" not in existing_data:
+            existing_data["messages"] = []
+        if "summaries" not in existing_data:
+            existing_data["summaries"] = []
+        # Safely decrypt messages if they exist and are not empty
+        if existing_data["messages"]:
+            existing_data["messages"] = [
+                {
+                    "content": decrypt_data(msg["content"], encryption_key),
+                    "id": msg["id"],
+                }
+                for msg in existing_data["messages"]
+            ]
+        # Safely decrypt summaries if they exist and are not empty
+        if existing_data["summaries"]:
+            existing_data["summaries"] = [
+                decrypt_data(summary, encryption_key)
+                for summary in existing_data["summaries"]
+            ]
 
     if existing_data:
         existing_data = Context(**existing_data)
@@ -80,8 +111,9 @@ async def prepare_context(
         retrieved_messages = await db.message.find_many(
             where={"id": {"in": messageIds}},
         )
+
         summaries = [
-            f"{msg.role.upper()}: {msg.summary}"
+            f"{msg.role.upper()}: {decrypt_data(msg.summary, encryption_key) if is_encrypted else msg.summary}"
             for msg in retrieved_messages
             if msg.summary  # Only include messages that have summaries
         ]
@@ -94,6 +126,18 @@ async def prepare_context(
     if new_context != original_context:
         print(f"Updating context for notebook: {notebook_id}")
         print(f"Context: {new_context}")
+        if is_encrypted:
+            new_context["messages"] = [
+                {
+                    "content": encrypt_data(msg["content"], encryption_key),
+                    "id": msg["id"],
+                }
+                for msg in new_context["messages"]
+            ]
+            new_context["summaries"] = [
+                encrypt_data(summary, encryption_key)
+                for summary in new_context["summaries"]
+            ]
 
         # Prisma Python requires JSON fields to be wrapped in Json type
         await db.notebook.update(

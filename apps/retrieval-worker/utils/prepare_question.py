@@ -1,9 +1,11 @@
 import json
 import uuid
 
+from generated.db.enums import Encryption
 from lib.llm_client import remote_llm
 from schemas.query_optimizer import OptimizedQuery, QueryOptimizer
 from utils.db_client import get_db
+from utils.encryption import decrypt_data
 
 # JSON schema exposed to the LLM (only textual fields via QueryOptimizer/LLMOptimizedQuery).
 json_schema_str = json.dumps(QueryOptimizer.model_json_schema())
@@ -74,13 +76,36 @@ def build_query_optimizer_prompt(user_input: str, context_str: str) -> str:
     """
 
 
-async def prepare_question(content: str, notebook_id: str) -> list[OptimizedQuery]:
+async def prepare_question(
+    content: str, notebook_id: str, encryption_key: str | None
+) -> list[OptimizedQuery]:
     """
     Generate optimized search queries for a notebook, then enrich them with local metadata.
     """
     db = get_db()
     record = await db.notebook.find_unique(where={"id": notebook_id})
     context = record.context if (record and record.context) else None
+
+    if context and record.encryption != Encryption.NotEncrypted:
+        if not encryption_key:
+            raise ValueError("encryption_key is required when encryption is enabled")
+
+        # Decrypt messages - decrypt_data handles base64 decoding internally
+        if "messages" in context and isinstance(context["messages"], list):
+            context["messages"] = [
+                {
+                    "id": msg["id"],
+                    "content": decrypt_data(msg["content"], encryption_key),
+                }
+                for msg in context["messages"]
+            ]
+
+        # Decrypt summaries - decrypt_data handles base64 decoding internally
+        if "summaries" in context and isinstance(context["summaries"], list):
+            context["summaries"] = [
+                decrypt_data(summary, encryption_key)
+                for summary in context["summaries"]
+            ]
 
     response_text = await remote_llm.generate.remote.aio(
         prompt=build_query_optimizer_prompt(content, context),

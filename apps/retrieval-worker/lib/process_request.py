@@ -33,16 +33,14 @@ async def process_request(
         yield "preparing_question"
         print(f"Preparing question: {user_query}")
         prepared_question = await prepare_question(
-            user_query, notebook_id, encryption_type, encryption_key
+            user_query, notebook_id, encryption_key
         )
         print(f"Prepared {prepared_question} optimized queries")
 
         # 2. Retrieve the chunks
         yield "retrieving_chunks"
         print(f"Retrieving chunks for notebook: {notebook_id}")
-        chunks = await retrieve_chunks(
-            notebook_id, prepared_question, encryption_type, encryption_key
-        )
+        chunks = await retrieve_chunks(notebook_id, prepared_question, encryption_type)
         print(f"Retrieved chunks for {chunks} queries")
 
         # 4. Get the parent chunks
@@ -89,7 +87,6 @@ async def process_request(
             notebook_id,
             assistant_message_id,
             user_message_id,
-            encryption_type,
             encryption_key,
         )
         print("Context prepared")

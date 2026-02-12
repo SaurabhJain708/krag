@@ -1,4 +1,4 @@
-import { encrypt_data } from "@/lib/encrypt";
+import { encrypt_data } from "@/lib/encryption";
 import { protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 
