@@ -133,6 +133,20 @@ export default function SettingsPage() {
     handleEncryptionMutation.mutate({ encryption: mode });
   };
 
+  const generateStrongKey = () => {
+    // Generate 32 random bytes (64 hex characters)
+    const array = new Uint8Array(32);
+    if (typeof window !== "undefined" && window.crypto) {
+      window.crypto.getRandomValues(array);
+      // Convert to hex string
+      const hexKey = Array.from(array)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      setEncryptionKey(hexKey);
+      setShowKey(true); // Show the generated key
+    }
+  };
+
   return (
     <div className="bg-background min-h-screen">
       <div className="container mx-auto max-w-4xl px-6 py-8">
@@ -286,26 +300,26 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="encryption-key">Encryption Key</Label>
-                  <div className="relative">
-                    <Input
-                      id="encryption-key"
-                      type={showKey ? "text" : "password"}
-                      placeholder={
-                        hasStoredKey
-                          ? "Encryption key is set"
-                          : "Enter your encryption key"
-                      }
-                      value={hasStoredKey ? "••••••••••••••••" : encryptionKey}
-                      onChange={(e) => setEncryptionKey(e.target.value)}
-                      disabled={hasStoredKey}
-                      className="pr-10"
-                    />
-                    {!hasStoredKey && (
+                  <div className="relative flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="encryption-key"
+                        type={showKey ? "text" : "password"}
+                        placeholder={
+                          hasStoredKey
+                            ? "Encryption key is set"
+                            : "Enter your encryption key"
+                        }
+                        value={encryptionKey}
+                        onChange={(e) => setEncryptionKey(e.target.value)}
+                        disabled={hasStoredKey}
+                        className="pr-10"
+                      />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute top-0 right-0 h-full hover:bg-transparent"
+                        className="absolute top-0 right-0 h-full cursor-pointer hover:bg-transparent"
                         onClick={() => setShowKey(!showKey)}
                       >
                         {showKey ? (
@@ -313,6 +327,17 @@ export default function SettingsPage() {
                         ) : (
                           <Eye className="text-muted-foreground h-4 w-4" />
                         )}
+                      </Button>
+                    </div>
+                    {!hasStoredKey && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={generateStrongKey}
+                        className="shrink-0 cursor-pointer"
+                      >
+                        <Key className="mr-2 h-4 w-4" />
+                        Generate Key
                       </Button>
                     )}
                   </div>
@@ -358,7 +383,7 @@ export default function SettingsPage() {
                         className={
                           hasStoredKey
                             ? "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input cursor-pointer"
-                            : "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                            : "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input cursor-pointer"
                         }
                       />
                     </div>
@@ -403,7 +428,7 @@ export default function SettingsPage() {
                         className={
                           hasStoredKey
                             ? "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input cursor-pointer"
-                            : "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                            : "data-[state=checked]:bg-primary data-[state=unchecked]:bg-input cursor-pointer"
                         }
                       />
                     </div>
