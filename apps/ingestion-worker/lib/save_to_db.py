@@ -11,6 +11,7 @@ from schemas.index import (
 )
 from supabase import Client, create_client
 from utils.db_client import get_db
+from utils.encrypt import encrypt_data
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -84,6 +85,14 @@ async def save_to_db(
         # For nullable Json fields, pass None explicitly
         content_data = None
 
+    if encryption_type != "NotEncrypted":
+        for content in content_data:
+            content["content"] = encrypt_data(content["content"], encryption_key)
+        for parent_chunk in parent_chunks:
+            parent_chunk["content"] = encrypt_data(
+                parent_chunk["content"], encryption_key
+            )
+
     await db.source.update(
         where={"id": source_id},
         data={
@@ -115,6 +124,10 @@ async def save_to_db(
         for child_chunk in child_chunks:
             chunk_id = str(uuid4())
             content = child_chunk["content"]
+
+            if encryption_type == "AdvancedEncryption":
+                content = encrypt_data(content, encryption_key)
+
             parent_ids = child_chunk[
                 "parent_ids"
             ]  # Flat list[str] from extract_parent_ids

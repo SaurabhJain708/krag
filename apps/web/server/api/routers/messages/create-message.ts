@@ -1,3 +1,4 @@
+import { encrypt_data } from "@/lib/encrypt";
 import { protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 
@@ -6,10 +7,11 @@ export const CreateMessage = protectedProcedure
     z.object({
       notebookId: z.string(),
       content: z.string(),
+      encryptionKey: z.string().optional(),
     })
   )
   .subscription(async function* ({ input, ctx }) {
-    const { notebookId, content } = input;
+    const { notebookId, content, encryptionKey } = input;
     const userId = ctx.session.user.id;
 
     // Validate notebook exists
@@ -23,11 +25,17 @@ export const CreateMessage = protectedProcedure
       throw new Error("Notebook not found");
     }
 
+    const encryptionType = notebook.encryption;
+    let encryptedContent = content;
+    if (encryptionType !== "NotEncrypted" && encryptionKey) {
+      encryptedContent = encrypt_data(content, encryptionKey);
+    }
+
     // Create user message
     const userMessage = await ctx.db.message.create({
       data: {
         notebookId,
-        content,
+        content: encryptedContent,
         userId,
         role: "user",
       },
@@ -68,6 +76,8 @@ export const CreateMessage = protectedProcedure
           assistant_message_id: assistantMessage.id,
           content: content,
           user_message_id: userMessage.id,
+          encryption_type: encryptionType,
+          encryption_key: encryptionKey,
         }),
         signal: abortController.signal, // Connects fetch to the controller
       });

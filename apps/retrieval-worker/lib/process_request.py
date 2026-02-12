@@ -16,7 +16,12 @@ class ClientConnectionInterrupted(Exception):
 
 
 async def process_request(
-    notebook_id: str, assistant_message_id: str, user_query: str, user_message_id: str
+    notebook_id: str,
+    assistant_message_id: str,
+    user_query: str,
+    user_message_id: str,
+    encryption_type: str,
+    encryption_key: str | None,
 ):
     """
     Async generator that processes the request and yields status updates.
@@ -27,19 +32,23 @@ async def process_request(
         # 1. Prepare the question
         yield "preparing_question"
         print(f"Preparing question: {user_query}")
-        prepared_question = await prepare_question(user_query, notebook_id)
+        prepared_question = await prepare_question(
+            user_query, notebook_id, encryption_type, encryption_key
+        )
         print(f"Prepared {prepared_question} optimized queries")
 
         # 2. Retrieve the chunks
         yield "retrieving_chunks"
         print(f"Retrieving chunks for notebook: {notebook_id}")
-        chunks = await retrieve_chunks(notebook_id, prepared_question)
+        chunks = await retrieve_chunks(
+            notebook_id, prepared_question, encryption_type, encryption_key
+        )
         print(f"Retrieved chunks for {chunks} queries")
 
         # 4. Get the parent chunks
         yield "getting_parent_chunks"
         print("Getting parent chunks")
-        parent_chunks = await get_parent_chunks(chunks)
+        parent_chunks = await get_parent_chunks(chunks, encryption_type, encryption_key)
         print(f"Got parent chunks for {parent_chunks} queries")
 
         # 5. Filter the parent chunks
@@ -62,7 +71,12 @@ async def process_request(
         print("Summarising messages")
         yield "summarizing_content"
         await summarise_messages(
-            user_query, final_response, assistant_message_id, user_message_id
+            user_query,
+            final_response,
+            assistant_message_id,
+            user_message_id,
+            encryption_type,
+            encryption_key,
         )
         print("Messages summarised")
 
@@ -75,13 +89,17 @@ async def process_request(
             notebook_id,
             assistant_message_id,
             user_message_id,
+            encryption_type,
+            encryption_key,
         )
         print("Context prepared")
 
         # 9. Save the response to the database
         yield "saving_to_db"
         print(f"Saving response to database: {assistant_message_id}")
-        await save_to_db(assistant_message_id, final_response)
+        await save_to_db(
+            assistant_message_id, final_response, encryption_type, encryption_key
+        )
 
         # 10. Cleanup
         yield "cleaning_up"

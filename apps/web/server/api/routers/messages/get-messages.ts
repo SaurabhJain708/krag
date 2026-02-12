@@ -1,11 +1,14 @@
+import { decrypt_data } from "@/lib/decrypt";
 import { protectedProcedure } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 export const GetMessages = protectedProcedure
-  .input(z.object({ notebookId: z.string() }))
+  .input(
+    z.object({ notebookId: z.string(), encryptionKey: z.string().optional() })
+  )
   .query(async ({ input, ctx }) => {
-    const { notebookId } = input;
+    const { notebookId, encryptionKey } = input;
     const userId = ctx.session.user.id;
     const notebook = await ctx.db.notebook.findUnique({
       where: {
@@ -22,6 +25,12 @@ export const GetMessages = protectedProcedure
     });
     if (!notebook) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Notebook not found" });
+    }
+    const encryptionType = notebook.encryption;
+    if (encryptionType !== "NotEncrypted" && encryptionKey) {
+      for (const message of notebook.messages) {
+        message.content = decrypt_data(message.content, encryptionKey);
+      }
     }
     return notebook.messages;
   });
