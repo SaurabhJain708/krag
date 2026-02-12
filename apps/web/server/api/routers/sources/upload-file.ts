@@ -12,10 +12,12 @@ export const uploadFile = protectedProcedure
       fileName: z.string().optional(),
       notebookId: z.string(),
       websiteUrl: z.string().optional(),
+      encryptionKey: z.string().optional(),
     })
   )
   .mutation(async ({ ctx, input }) => {
-    const { fileBase64, fileName, notebookId, websiteUrl } = input;
+    const { fileBase64, fileName, notebookId, websiteUrl, encryptionKey } =
+      input;
     const userId = ctx.session.user.id;
     const notebook = await ctx.db.notebook.findUnique({
       where: {
@@ -33,6 +35,8 @@ export const uploadFile = protectedProcedure
       userId,
     });
 
+    const encryptionType = notebook.encryption;
+
     await redis.lpush(
       "file_processing_queue",
       JSON.stringify({
@@ -42,6 +46,8 @@ export const uploadFile = protectedProcedure
         user_id: userId,
         url: websiteUrl,
         type: websiteUrl ? "url" : "pdf",
+        encryptionKey: encryptionKey || null,
+        encryptionType: encryptionType,
       })
     );
 

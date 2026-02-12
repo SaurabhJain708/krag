@@ -48,6 +48,8 @@ async def save_to_db(
     split_content: list[Chunk],
     images: list[images],
     user_id: str,
+    encryption_type: str,
+    encryption_key: str | None,
 ):
     db = get_db()
 

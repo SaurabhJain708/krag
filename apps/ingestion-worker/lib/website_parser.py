@@ -10,7 +10,13 @@ from schemas.index import FileProcessingStatus
 exa = Exa(os.environ.get("EXA_API_KEY"))
 
 
-async def parse_website(website_url: str, user_id: str, source_id: str) -> str:
+async def parse_website(
+    website_url: str,
+    user_id: str,
+    source_id: str,
+    encryption_key: str | None,
+    encryption_type: str,
+) -> str:
     try:
         update_source_status(source_id, FileProcessingStatus.extracting.value)
 
@@ -54,6 +60,8 @@ async def parse_website(website_url: str, user_id: str, source_id: str) -> str:
             db_chunks,
             [],
             user_id,
+            encryption_type,
+            encryption_key,
         )
 
         update_source_status(source_id, FileProcessingStatus.completed.value)

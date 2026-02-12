@@ -9,7 +9,13 @@ from utils.split_pdf_pages import (
 )
 
 
-async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
+async def parse_pdf(
+    pdf_base_64: str,
+    source_id: str,
+    user_id: str,
+    encryption_key: str | None,
+    encryption_type: str,
+):
     try:
         update_source_status(source_id, FileProcessingStatus.starting.value)
         split_pdf_chunks = base64_to_chunked_pdfs(pdf_base_64)
@@ -100,6 +106,8 @@ async def parse_pdf(pdf_base_64: str, source_id: str, user_id: str):
             db_chunks,
             formatted_images,
             user_id,
+            encryption_type,
+            encryption_key,
         )
 
         update_source_status(source_id, FileProcessingStatus.completed.value)

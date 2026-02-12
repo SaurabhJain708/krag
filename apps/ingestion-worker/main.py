@@ -56,7 +56,8 @@ async def main():
                     message = json.loads(raw_message)
                     file_id = message.get("id", "unknown")
                     user_id = message.get("user_id", "unknown")
-
+                    encryption_key = message.get("encryption_key", None)
+                    encryption_type = message.get("encryption_type", None)
                     print(
                         f"📥 Task received: file_id={file_id}, user_id={user_id}",
                         flush=True,
@@ -66,11 +67,19 @@ async def main():
                     )
                     if message["type"] == "pdf":
                         await parse_pdf(
-                            message["base64"], message["id"], message["user_id"]
+                            message["base64"],
+                            message["id"],
+                            message["user_id"],
+                            encryption_key,
+                            encryption_type,
                         )
                     elif message["type"] == "url":
                         await parse_website(
-                            message["url"], message["user_id"], message["id"]
+                            message["url"],
+                            message["user_id"],
+                            message["id"],
+                            encryption_key,
+                            encryption_type,
                         )
 
                     print(f"✅ Successfully processed file {file_id}", flush=True)

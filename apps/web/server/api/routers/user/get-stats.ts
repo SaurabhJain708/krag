@@ -18,9 +18,12 @@ export const GetUserStats = protectedProcedure.query(async ({ ctx }) => {
       ctx.db.source.findMany({
         where: {
           userId: userId,
-          path: {
-            not: null,
+          image_paths: {
+            isEmpty: false,
           },
+        },
+        select: {
+          image_paths: true,
         },
       }),
       ctx.db.notebook.findMany({
@@ -33,9 +36,18 @@ export const GetUserStats = protectedProcedure.query(async ({ ctx }) => {
       }),
     ]);
 
+  const sourceFileCount = sourcesWithFiles.reduce(
+    (count, source) => count + source.image_paths.length,
+    0
+  );
+  const notebookFileCount = notebooksWithFiles.filter(
+    (notebook) => notebook.image !== null
+  ).length;
+  const fileCount = sourceFileCount + notebookFileCount;
+
   return {
     notebookCount,
-    fileCount: sourcesWithFiles.length + notebooksWithFiles.length, // Sources are the files in the database
+    fileCount,
     sourceCount,
   };
 });
