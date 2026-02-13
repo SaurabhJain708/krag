@@ -420,8 +420,8 @@ class BGEM3EmbedderCPU:
 class MXBAIRerankerV2:
     @modal.enter()
     def setup(self):
-        import torch
-        from sentence_transformers import CrossEncoder
+        import torch  # type: ignore
+        from sentence_transformers import CrossEncoder  # type: ignore
 
         # Load mxbai-rerank-large-v2
         # This uses the weights baked into the image.
@@ -486,8 +486,8 @@ class MXBAIRerankerV2:
 class Phi4Mini:
     @modal.enter()
     def setup(self):
-        from vllm.engine.arg_utils import AsyncEngineArgs
-        from vllm.engine.async_llm_engine import AsyncLLMEngine
+        from vllm.engine.arg_utils import AsyncEngineArgs  # type: ignore
+        from vllm.engine.async_llm_engine import AsyncLLMEngine  # type: ignore
 
         model_name = "microsoft/Phi-4-mini-instruct"
 
@@ -512,10 +512,10 @@ class Phi4Mini:
     ) -> str:
         import uuid
 
-        from vllm import SamplingParams
+        from vllm import SamplingParams  # type: ignore
 
         # 1. Import the wrapper class required by the Python API
-        from vllm.sampling_params import GuidedDecodingParams
+        from vllm.sampling_params import GuidedDecodingParams  # type: ignore
 
         # 2. Prepare the guided decoding object
         guided_options = None
@@ -557,8 +557,8 @@ class Qwen2_5_7BAWQ:
     @modal.enter()
     def setup(self):
         from transformers import AutoTokenizer, Qwen2Tokenizer
-        from vllm.engine.arg_utils import AsyncEngineArgs
-        from vllm.engine.async_llm_engine import AsyncLLMEngine
+        from vllm.engine.arg_utils import AsyncEngineArgs  # type: ignore
+        from vllm.engine.async_llm_engine import AsyncLLMEngine  # type: ignore
 
         # --- 🩹 THE MONKEYPATCH FIX ---
         # The "Slow" Qwen2Tokenizer is missing an attribute that vLLM 0.7.2 requires.
@@ -608,13 +608,13 @@ class Qwen2_5_7BAWQ:
     ) -> str:
         import uuid
 
-        from vllm import SamplingParams
+        from vllm import SamplingParams  # type: ignore
 
         logits_processors = []
 
         if json_schema:
             try:
-                from vllm.model_executor.guided_decoding import (
+                from vllm.model_executor.guided_decoding import (  # type: ignore
                     get_guided_decoding_logits_processor,
                 )
             except ImportError:
@@ -680,8 +680,8 @@ class Qwen2_5_7BAWQ:
 class MistralNemoAWQ:
     @modal.enter()
     def setup(self):
-        from vllm.engine.arg_utils import AsyncEngineArgs
-        from vllm.engine.async_llm_engine import AsyncLLMEngine
+        from vllm.engine.arg_utils import AsyncEngineArgs  # type: ignore
+        from vllm.engine.async_llm_engine import AsyncLLMEngine  # type: ignore
 
         # Using a reliable third-party quantization for Nemo
         model_name = "casperhansen/mistral-nemo-instruct-2407-awq"
@@ -708,8 +708,8 @@ class MistralNemoAWQ:
     ) -> str:
         import uuid
 
-        from vllm import SamplingParams
-        from vllm.sampling_params import GuidedDecodingParams
+        from vllm import SamplingParams  # type: ignore
+        from vllm.sampling_params import GuidedDecodingParams  # type: ignore
 
         guided_options = None
         if json_schema:
@@ -746,8 +746,8 @@ class MistralNemoAWQ:
 class Qwen2_5_14BAWQ:
     @modal.enter()
     def setup(self):
-        from vllm.engine.arg_utils import AsyncEngineArgs
-        from vllm.engine.async_llm_engine import AsyncLLMEngine
+        from vllm.engine.arg_utils import AsyncEngineArgs  # type: ignore
+        from vllm.engine.async_llm_engine import AsyncLLMEngine  # type: ignore
 
         model_name = "Qwen/Qwen2.5-14B-Instruct-AWQ"
 
@@ -773,8 +773,8 @@ class Qwen2_5_14BAWQ:
     ) -> str:
         import uuid
 
-        from vllm import SamplingParams
-        from vllm.sampling_params import GuidedDecodingParams
+        from vllm import SamplingParams  # type: ignore
+        from vllm.sampling_params import GuidedDecodingParams  # type: ignore
 
         guided_options = None
         if json_schema:
