@@ -66,24 +66,18 @@ bge_m3_image = (
 )
 
 mxbai_v2_image = (
-    # 1. Use NVIDIA Devel Base (contains nvcc compiler)
     modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.10")
-    # 2. Install build tools first
     .pip_install("ninja", "packaging", "wheel", "setuptools")
-    # 3. Install Core Libs (WITH PINNED TRANSFORMERS)
     .pip_install(
         "torch==2.4.0",
-        "transformers==4.46.3",  # <--- CRITICAL FIX: Pinned stable version
+        "transformers==4.46.3",
         "sentence-transformers>=3.0.0",
         "numpy",
         "accelerate",
         "huggingface_hub",
     )
-    # 4. Compile Flash Attention
-    .pip_install("flash-attn", extra_options="--no-build-isolation").env(
-        {"HF_HUB_CACHE": "/root/.cache/huggingface"}
-    )
-    # 5. Bake in model weights
+    .pip_install("flash-attn", extra_options="--no-build-isolation")
+    .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
     .run_commands(
         "python -c 'from huggingface_hub import snapshot_download; "
         'snapshot_download("mixedbread-ai/mxbai-rerank-large-v2", '
@@ -100,7 +94,6 @@ qwen_14b_awq_image = (
         "pycountry",
         "tqdm==4.66.5",
     )
-    # vLLM 0.7.3 + Transformers 4.48.3 is stable for Qwen 2.5
     .pip_install(["vllm==0.7.3", "transformers==4.48.3"])
     .env({"HF_HUB_CACHE": "/root/.cache/huggingface"})
     .run_commands(
@@ -151,15 +144,12 @@ class MarkerParser:
         import tempfile
         import uuid
 
-        import torch  # type: ignore
         from marker.output import text_from_rendered  # type: ignore
 
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as temp_pdf:
             temp_pdf.write(pdf_data)
-            temp_pdf.flush()  # Flush Python buffer
-            os.fsync(temp_pdf.file.fileno())  # Force OS to write to disk
-
-            print(f"Processing size: {len(pdf_data)/1024:.1f} KB")
+            temp_pdf.flush()
+            os.fsync(temp_pdf.file.fileno())
 
             rendered = self.converter(temp_pdf.name)
 
@@ -169,14 +159,11 @@ class MarkerParser:
             name_mapping = {}  # old_name -> new_uuid
 
             for old_name, image_data in images.items():
-                # Generate UUIDv4 for each image
                 image_uuid = str(uuid.uuid4())
 
-                # Convert PIL Image to bytes if needed (for Modal serialization)
-                if hasattr(image_data, "save"):  # Check if it's a PIL Image
+                if hasattr(image_data, "save"):
                     import io
 
-                    # Convert PIL Image to bytes (PNG format)
                     img_bytes = io.BytesIO()
                     image_data.save(img_bytes, format="PNG")
                     image_data = img_bytes.getvalue()
@@ -184,28 +171,17 @@ class MarkerParser:
                 new_images[image_uuid] = image_data
                 name_mapping[old_name] = image_uuid
 
-            # 5. Replace image references in text
-            # Marker uses markdown image syntax: ![](filename) or ![alt](filename)
-            # Pattern matches: ![optional alt text](filename)
             def replace_image_ref(match):
                 alt_text = match.group(1) if match.group(1) else ""
                 old_filename = match.group(2)
 
-                # Check if this filename exists in our mapping
                 if old_filename in name_mapping:
                     new_uuid = name_mapping[old_filename]
                     return f"![{alt_text}]({new_uuid})"
-                # If not found, return original (shouldn't happen, but safe fallback)
                 return match.group(0)
 
-            # Match markdown image syntax: ![alt](filename) or ![](filename)
             image_pattern = r"!\[([^\]]*)\]\(([^\)]+)\)"
             modified_text = re.sub(image_pattern, replace_image_ref, text)
-
-            # 6. Optional: Log VRAM usage for debugging
-            if torch.cuda.is_available():
-                peak_mb = torch.cuda.max_memory_allocated() / (1024**2)
-                print(f"[VRAM] Peak: {peak_mb:.1f} MB")
 
             return modified_text, new_images
 
@@ -245,17 +221,13 @@ class FlorenceSummarizer:
 
         from PIL import Image  # type: ignore
 
-        # 1. Load Image (CPU work)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-        # 2. Prepare Inputs (CPU work)
-        # We ask for a detailed caption
         prompt = "<MORE_DETAILED_CAPTION>"
         inputs = self.processor(text=prompt, images=image, return_tensors="pt").to(
             self.device, self.torch_dtype
         )
 
-        # 3. Generate (GPU work)
         generated_ids = self.model.generate(
             input_ids=inputs["input_ids"],
             pixel_values=inputs["pixel_values"],
@@ -264,7 +236,6 @@ class FlorenceSummarizer:
             num_beams=3,
         )
 
-        # 4. Decode (CPU work)
         generated_text = self.processor.batch_decode(
             generated_ids, skip_special_tokens=False
         )[0]
@@ -272,7 +243,6 @@ class FlorenceSummarizer:
             generated_text, task=prompt, image_size=(image.width, image.height)
         )
 
-        # Return the clean string
         return parsed_answer["<MORE_DETAILED_CAPTION>"]
 
 
@@ -424,7 +394,7 @@ class MXBAIRerankerV2:
 
 
 @app.cls(
-    gpu="L4",  # 14B AWQ takes ~9GB VRAM, leaving ~15GB for Context on an L4 (24GB)
+    gpu="L4",
     image=qwen_14b_awq_image,
     max_containers=1,
     timeout=600,

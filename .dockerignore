@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Note: All apps and packages are included in the build context.
+# Each Dockerfile only copies what it needs to the final image,
+# so including everything in the build context is fine and simpler.
+# The .dockerignore files in each app directory can exclude other apps if needed.
+
+# Exclude requirements folder from modal_services (not needed at runtime)
+packages/modal_services/modal_services/requirements/
+packages/modal_services/modal_services/freeze_deps.py
+
+# Documentation
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Turbo
+.turbo/
+turbo.json
+
+# Other
+FORMATTING.md
+requirements-dev.txt
