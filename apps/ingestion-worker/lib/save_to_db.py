@@ -80,14 +80,17 @@ async def save_to_db(
 
     if split_content:
         content_list = [dict(item) for item in split_content]
+        # Encrypt content before converting to Json if needed
+        if encryption_type != "NotEncrypted" and encryption_key:
+            for content in content_list:
+                content["content"] = encrypt_data(content["content"], encryption_key)
         content_data = fields.Json(content_list)
     else:
         # For nullable Json fields, pass None explicitly
         content_data = None
 
-    if encryption_type != "NotEncrypted":
-        for content in content_data:
-            content["content"] = encrypt_data(content["content"], encryption_key)
+    if encryption_type != "NotEncrypted" and encryption_key:
+        # Encrypt parent chunks
         for parent_chunk in parent_chunks:
             parent_chunk["content"] = encrypt_data(
                 parent_chunk["content"], encryption_key
@@ -125,7 +128,7 @@ async def save_to_db(
             chunk_id = str(uuid4())
             content = child_chunk["content"]
 
-            if encryption_type == "AdvancedEncryption":
+            if encryption_type == "AdvancedEncryption" and encryption_key:
                 content = encrypt_data(content, encryption_key)
 
             parent_ids = child_chunk[

@@ -1,7 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { BookOpen, Settings, Home, User } from "lucide-react";
+import {
+  BookOpen,
+  Settings,
+  Home,
+  User,
+  Lock,
+  LockOpen,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,13 +19,63 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface HeaderProps {
   notebookName?: string;
   isLoadingNotebook: boolean;
   sourceCount: number;
   isLoadingSources: boolean;
+  encryption?: "NotEncrypted" | "SimpleEncryption" | "AdvancedEncryption";
   onSignOut: () => void;
+}
+
+// Get encryption display info
+function getEncryptionInfo(
+  encryption: "NotEncrypted" | "SimpleEncryption" | "AdvancedEncryption"
+) {
+  switch (encryption) {
+    case "NotEncrypted":
+      return {
+        label: "Not Encrypted",
+        icon: LockOpen,
+        className: "text-muted-foreground",
+        bgClassName: "bg-muted/50",
+        tooltip:
+          "This notebook is not encrypted. Data is stored in plain text.",
+      };
+    case "SimpleEncryption":
+      return {
+        label: "Simple Encryption",
+        icon: Lock,
+        className: "text-amber-600 dark:text-amber-500",
+        bgClassName: "bg-amber-50 dark:bg-amber-950/30",
+        tooltip:
+          "This notebook uses simple encryption for basic data protection.",
+      };
+    case "AdvancedEncryption":
+      return {
+        label: "Advanced Encryption",
+        icon: ShieldCheck,
+        className: "text-green-600 dark:text-green-500",
+        bgClassName: "bg-green-50 dark:bg-green-950/30",
+        tooltip:
+          "This notebook uses advanced encryption for maximum security and data protection.",
+      };
+    default:
+      return {
+        label: encryption,
+        icon: LockOpen,
+        className: "text-muted-foreground",
+        bgClassName: "bg-muted/50",
+        tooltip: "Encryption status unknown.",
+      };
+  }
 }
 
 export function Header({
@@ -25,9 +83,12 @@ export function Header({
   isLoadingNotebook,
   sourceCount,
   isLoadingSources,
+  encryption,
   onSignOut,
 }: HeaderProps) {
   const router = useRouter();
+  const encryptionInfo = encryption ? getEncryptionInfo(encryption) : null;
+  const EncryptionIcon = encryptionInfo?.icon;
 
   return (
     <header className="bg-background/80 border-border/50 z-10 flex shrink-0 flex-col border-b px-4 py-2 shadow-sm backdrop-blur-sm sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-0">
@@ -36,11 +97,32 @@ export function Header({
           <BookOpen className="h-5 w-5 text-white" />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-foreground text-sm leading-tight font-semibold sm:text-base">
-            {isLoadingNotebook
-              ? "Loading..."
-              : notebookName || "Untitled notebook"}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-foreground text-sm leading-tight font-semibold sm:text-base">
+              {isLoadingNotebook
+                ? "Loading..."
+                : notebookName || "Untitled notebook"}
+            </h1>
+            {encryptionInfo && EncryptionIcon && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={`inline-flex cursor-help items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${encryptionInfo.bgClassName} ${encryptionInfo.className}`}
+                    >
+                      <EncryptionIcon className="h-3 w-3" />
+                      <span className="xs:inline hidden sm:inline">
+                        {encryptionInfo.label}
+                      </span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{encryptionInfo.tooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
           <p className="text-muted-foreground text-[11px] sm:text-xs">
             {isLoadingSources ? "Loading..." : `${sourceCount} sources`}
           </p>

@@ -235,6 +235,7 @@ export default function NotebookDetailPage({
         isLoadingNotebook={isLoadingNotebook}
         sourceCount={sourceCount}
         isLoadingSources={isLoadingSources}
+        encryption={notebook?.encryption}
         onSignOut={handleSignout}
       />
 

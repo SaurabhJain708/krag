@@ -69,6 +69,34 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
 
   // Shared Streamdown components to avoid duplication
   const streamdownComponents = {
+    a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+      const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        // Prevent Streamdown's default modal behavior for links
+        // Allow normal link navigation
+        if (
+          props.href &&
+          (props.href.startsWith("http") || props.href.startsWith("https"))
+        ) {
+          // External links - open in new tab
+          window.open(props.href, "_blank", "noopener,noreferrer");
+          e.preventDefault();
+        }
+        // Internal links will use default behavior
+        props.onClick?.(e);
+      };
+
+      return (
+        <a
+          {...props}
+          onClick={handleClick}
+          className="text-primary hover:text-primary/80 underline underline-offset-2"
+          target={props.href?.startsWith("http") ? "_blank" : undefined}
+          rel={
+            props.href?.startsWith("http") ? "noopener noreferrer" : undefined
+          }
+        />
+      );
+    },
     img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
       return (
         <img
@@ -325,7 +353,7 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
           </div>
         </div>
       ) : (
-        <div className="bg-background flex h-full flex-col">
+        <div className="bg-background viewer-pane-content flex h-full flex-col">
           <div
             ref={contentRef}
             className="text-foreground/90 [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_li]:text-foreground/80 [&_blockquote]:border-border [&_blockquote]:text-muted-foreground flex-1 overflow-x-hidden overflow-y-auto px-6 py-5 text-sm leading-relaxed wrap-break-word **:max-w-full [&_.highlighted-chunk]:rounded-md [&_.highlighted-chunk]:border [&_.highlighted-chunk]:border-yellow-400 [&_.highlighted-chunk]:bg-yellow-200/80 [&_.highlighted-chunk]:px-1.5 [&_.highlighted-chunk]:py-0.5 [&_.highlighted-chunk]:dark:border-yellow-600 [&_.highlighted-chunk]:dark:bg-yellow-900/40 [&_blockquote]:border-l-4 [&_blockquote]:pl-4 [&_blockquote]:italic [&_div[data-paragraph]]:mb-3 [&_div[data-paragraph]:last-child]:mb-0 [&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1:first-child]:mt-0 [&_h2]:mt-5 [&_h2]:mb-3 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:mb-3 [&_ol]:ml-4 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ul]:ml-4 [&_ul]:list-disc [&_ul]:space-y-1 [&.highlighted-chunk]:rounded-md [&.highlighted-chunk]:border [&.highlighted-chunk]:border-yellow-400 [&.highlighted-chunk]:bg-yellow-200/80 [&.highlighted-chunk]:px-1.5 [&.highlighted-chunk]:py-0.5 [&.highlighted-chunk]:dark:border-yellow-600 [&.highlighted-chunk]:dark:bg-yellow-900/40"
