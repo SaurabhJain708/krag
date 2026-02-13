@@ -115,7 +115,6 @@ async def save_to_db(
         ]
     )
     if child_chunks:
-        import json
         from uuid import uuid4
 
         # Use raw SQL since Prisma client doesn't have DocumentChunk mutations
@@ -131,24 +130,23 @@ async def save_to_db(
             if encryption_type == "AdvancedEncryption" and encryption_key:
                 content = encrypt_data(content, encryption_key)
 
-            parent_ids = child_chunk[
-                "parent_ids"
-            ]  # Flat list[str] from extract_parent_ids
-            embeddings = child_chunk["embeddings"]
+            parent_ids = child_chunk["parent_ids"]
 
-            # Format embedding as string for pgvector: '[1.0, 2.0, 3.0]'
+            if not isinstance(parent_ids, list):
+                parent_ids = [str(parent_ids)] if parent_ids else []
+            else:
+                parent_ids = [str(pid) for pid in parent_ids if pid]
+
+            embeddings = child_chunk["embeddings"]
             embedding_str = str(embeddings)
 
-            # Format parent_ids as PostgreSQL text[] array literal: '{"id1", "id2"}'
-            parent_ids_literal = (
-                json.dumps(parent_ids).replace("[", "{").replace("]", "}")
-            )
-
+            # Pass parent_ids as list - Prisma Python should handle conversion
+            # If that doesn't work, we'll need to format as PostgreSQL array literal
             await db.execute_raw(
                 insert_query,
                 chunk_id,
                 content,
-                parent_ids_literal,
+                parent_ids if parent_ids else [],
                 embedding_str,
                 source_id,
             )

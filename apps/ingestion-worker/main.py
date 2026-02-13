@@ -63,6 +63,20 @@ async def main():
                         flush=True,
                     )
                     print(
+                        f"🔑 Encryption: type={encryption_type}, key_present={encryption_key is not None}",
+                        flush=True,
+                    )
+                    # Debug: show all message keys to verify structure
+                    print(
+                        f"🔍 Message keys: {list(message.keys())}",
+                        flush=True,
+                    )
+                    if encryption_key:
+                        print(
+                            f"🔑 Encryption key value: {encryption_key[:10]}...",
+                            flush=True,
+                        )
+                    print(
                         f"🚀 Starting PDF processing for file {file_id}...", flush=True
                     )
                     if message["type"] == "pdf":

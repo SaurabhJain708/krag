@@ -145,13 +145,29 @@ export default function NotebookDetailPage({
     toast.loading("Uploading file...", { id: "upload-file" });
 
     try {
+      // Read encryption key from localStorage at upload time to ensure we have the latest value
+      const rawKey =
+        typeof window !== "undefined"
+          ? localStorage.getItem(ENCRYPTION_KEY_STORAGE)
+          : null;
+      const currentEncryptionKey = rawKey?.trim() || undefined;
+
+      console.log(
+        "Upload file - localStorage key:",
+        rawKey ? "found" : "not found"
+      );
+      console.log(
+        "Upload file - encryptionKey to send:",
+        currentEncryptionKey ? "present" : "missing"
+      );
+
       for (const file of Array.from(files)) {
         const fileBase64 = await fileToBase64(file);
         await uploadFile.mutateAsync({
           fileBase64,
           fileName: file.name,
           notebookId,
-          encryptionKey: encryptionKey,
+          encryptionKey: currentEncryptionKey,
         });
       }
       setIsAddSourceDialogOpen(false);
@@ -199,12 +215,28 @@ export default function NotebookDetailPage({
     toast.loading("Uploading website...", { id: "upload-url" });
 
     try {
+      // Read encryption key from localStorage at upload time to ensure we have the latest value
+      const rawKey =
+        typeof window !== "undefined"
+          ? localStorage.getItem(ENCRYPTION_KEY_STORAGE)
+          : null;
+      const currentEncryptionKey = rawKey?.trim() || undefined;
+
+      console.log(
+        "Upload URL - localStorage key:",
+        rawKey ? "found" : "not found"
+      );
+      console.log(
+        "Upload URL - encryptionKey to send:",
+        currentEncryptionKey ? "present" : "missing"
+      );
+
       await uploadFile.mutateAsync({
         fileBase64: "",
         fileName: websiteUrl,
         notebookId,
         websiteUrl: websiteUrl.trim(),
-        encryptionKey: encryptionKey,
+        encryptionKey: currentEncryptionKey,
       });
       setIsAddSourceDialogOpen(false);
       setWebsiteUrl("");

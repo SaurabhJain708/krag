@@ -37,19 +37,39 @@ export const uploadFile = protectedProcedure
 
     const encryptionType = notebook.encryption;
 
-    await redis.lpush(
-      "file_processing_queue",
-      JSON.stringify({
-        id: data.id,
-        mimeType: websiteUrl ? "text/html" : "application/pdf",
-        base64: fileBase64 || "",
-        user_id: userId,
-        url: websiteUrl,
-        type: websiteUrl ? "url" : "pdf",
-        encryptionKey: encryptionKey || null,
-        encryptionType: encryptionType,
-      })
+    // Debug logging
+    console.log(
+      "Upload file - encryptionKey received:",
+      encryptionKey ? "present" : "missing"
     );
+    console.log(
+      "Upload file - encryptionKey value:",
+      encryptionKey ? `${encryptionKey.substring(0, 10)}...` : "null"
+    );
+    console.log("Upload file - encryptionType:", encryptionType);
+
+    const queueMessage = {
+      id: data.id,
+      mimeType: websiteUrl ? "text/html" : "application/pdf",
+      base64: fileBase64 || "",
+      user_id: userId,
+      url: websiteUrl,
+      type: websiteUrl ? "url" : "pdf",
+      encryption_key:
+        encryptionKey && encryptionKey.trim() ? encryptionKey : null,
+      encryption_type: encryptionType,
+    };
+
+    console.log(
+      "Upload file - Redis message encryption_key:",
+      queueMessage.encryption_key ? "present" : "null"
+    );
+    console.log(
+      "Upload file - Redis message encryption_type:",
+      queueMessage.encryption_type
+    );
+
+    await redis.lpush("file_processing_queue", JSON.stringify(queueMessage));
 
     await redis.set(`source:${data.id}`, FileProcessingStatus.queued);
 
