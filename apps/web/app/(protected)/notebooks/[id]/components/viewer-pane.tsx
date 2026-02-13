@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/server/trpc/react";
 import { Streamdown } from "streamdown";
 import type { ActiveCitation } from "./chat-pane";
+
+const ENCRYPTION_KEY_STORAGE =
+  process.env.ENCRYPTION_KEY_STORAGE || "encryption_key";
 
 interface ViewerPaneProps {
   activeCitation: ActiveCitation | null;
@@ -14,13 +17,27 @@ interface ViewerPaneProps {
 export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
   const hasCitation = !!activeCitation;
   const contentRef = useRef<HTMLDivElement>(null);
+  const [encryptionKey, setEncryptionKey] = useState<string | undefined>(
+    undefined
+  );
+
+  // Load encryption key from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedKey = localStorage.getItem(ENCRYPTION_KEY_STORAGE);
+      setEncryptionKey(storedKey || undefined);
+    }
+  }, []);
 
   const {
     data: source,
     isLoading,
     error,
   } = trpc.sourcesRouter.getSource.useQuery(
-    { sourceId: activeCitation?.sourceId ?? "" },
+    {
+      sourceId: activeCitation?.sourceId ?? "",
+      encryptionKey: encryptionKey,
+    },
     {
       enabled: !!activeCitation?.sourceId,
       retry: false, // Don't retry on 404 errors

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
 import { trpc } from "@/server/trpc/react";
@@ -14,6 +14,9 @@ import { ViewerPane } from "./components/viewer-pane";
 import { AddSourceDialog } from "./components/add-source-dialog";
 import { Footer } from "./components/footer";
 import { fileToBase64 } from "./components/utils";
+
+const ENCRYPTION_KEY_STORAGE =
+  process.env.ENCRYPTION_KEY_STORAGE || "encryption_key";
 
 // Main Component
 export default function NotebookDetailPage({
@@ -34,6 +37,17 @@ export default function NotebookDetailPage({
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | null>(
     null
   );
+  const [encryptionKey, setEncryptionKey] = useState<string | undefined>(
+    undefined
+  );
+
+  // Load encryption key from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedKey = localStorage.getItem(ENCRYPTION_KEY_STORAGE);
+      setEncryptionKey(storedKey || undefined);
+    }
+  }, []);
 
   const {
     data: notebook,
@@ -137,6 +151,7 @@ export default function NotebookDetailPage({
           fileBase64,
           fileName: file.name,
           notebookId,
+          encryptionKey: encryptionKey,
         });
       }
       setIsAddSourceDialogOpen(false);
@@ -189,6 +204,7 @@ export default function NotebookDetailPage({
         fileName: websiteUrl,
         notebookId,
         websiteUrl: websiteUrl.trim(),
+        encryptionKey: encryptionKey,
       });
       setIsAddSourceDialogOpen(false);
       setWebsiteUrl("");

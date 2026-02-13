@@ -45,6 +45,7 @@ export default function NotebooksPage() {
       createdAt: notebook.createdAt,
       sourceCount: notebook._count.sources,
       image: notebook.image ?? undefined,
+      encryption: notebook.encryption,
     }));
 
     switch (sortBy) {

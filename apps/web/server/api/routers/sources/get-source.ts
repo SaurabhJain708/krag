@@ -2,7 +2,8 @@ import { z } from "zod";
 import { protectedProcedure } from "../../trpc";
 import { TRPCError } from "@trpc/server";
 import { supabase } from "@/lib/supabase";
-
+import { decrypt_data } from "@/lib/encryption";
+import { Encryption } from "@repo/db";
 async function getSignedUrlsMap(
   imagePaths: string[]
 ): Promise<Record<string, string>> {
@@ -151,19 +152,46 @@ export const getSource = protectedProcedure
   .input(
     z.object({
       sourceId: z.string(),
+      encryptionKey: z.string().optional(),
     })
   )
   .query(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
-    const { sourceId } = input;
+    const { sourceId, encryptionKey } = input;
     const source = await ctx.db.source.findUnique({
       where: {
         id: sourceId,
         userId: userId,
       },
+      include: {
+        notebook: true,
+      },
     });
     if (!source) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Source not found" });
+    }
+    const encryptionType = source.notebook.encryption;
+    if (encryptionType !== Encryption.NotEncrypted) {
+      if (!encryptionKey) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Encryption key is required",
+        });
+      }
+      if (source.content && Array.isArray(source.content)) {
+        source.content = (
+          source.content as Array<{
+            type: "text" | "table";
+            content: string;
+            [key: string]: unknown;
+          }>
+        ).map((block) => {
+          return {
+            ...block,
+            content: decrypt_data(block.content, encryptionKey),
+          };
+        });
+      }
     }
 
     let imageSignedUrls: Record<string, string> = {};

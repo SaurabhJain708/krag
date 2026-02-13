@@ -30,6 +30,9 @@ import { trpc } from "@/server/trpc/react";
 import { toast } from "sonner";
 import { ChatMessage } from "./chat-message";
 
+const ENCRYPTION_KEY_STORAGE =
+  process.env.ENCRYPTION_KEY_STORAGE || "encryption_key";
+
 interface ChatPaneProps {
   sourcesCollapsed: boolean;
   onShowSources: () => void;
@@ -58,10 +61,22 @@ export function ChatPane({
   const [isLoading, setIsLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [statusHistory, setStatusHistory] = useState<string[]>([]);
+  const [encryptionKey, setEncryptionKey] = useState<string | undefined>(
+    undefined
+  );
   const [subscriptionInput, setSubscriptionInput] = useState<{
     notebookId: string;
     content: string;
+    encryptionKey?: string;
   } | null>(null);
+
+  // Load encryption key from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedKey = localStorage.getItem(ENCRYPTION_KEY_STORAGE);
+      setEncryptionKey(storedKey || undefined);
+    }
+  }, []);
 
   // Status configuration with icons and friendly messages
   const statusConfig: Record<
@@ -118,11 +133,16 @@ export function ChatPane({
   const { data: messages = [], isLoading: isLoadingMessages } =
     trpc.messagesRouter.getMessages.useQuery({
       notebookId,
+      encryptionKey: encryptionKey,
     });
 
   // Subscription for streaming status updates
   trpc.messagesRouter.createMessage.useSubscription(
-    subscriptionInput || { notebookId: "", content: "" },
+    subscriptionInput || {
+      notebookId: "",
+      content: "",
+      encryptionKey: undefined,
+    },
     {
       enabled: subscriptionInput !== null,
       onData: (status: string) => {
@@ -183,6 +203,7 @@ export function ChatPane({
       userId: "", // Will be filled by server
       notebookId,
       role: "user" as const,
+      summary: null,
       failed: false,
     };
 
@@ -195,6 +216,7 @@ export function ChatPane({
     setSubscriptionInput({
       notebookId,
       content: messageContent,
+      encryptionKey: encryptionKey,
     });
   };
 

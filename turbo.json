@@ -30,7 +30,8 @@
         "MODAL_TOKEN_SECRET",
         "EXA_API_KEY",
         "RETRIEVAL_API",
-        "ENCRYPTION_KEY"
+        "ENCRYPTION_KEY",
+        "ENCRYPTION_KEY_STORAGE"
       ]
     },
     "lint": {
@@ -57,7 +58,8 @@
         "MODAL_TOKEN_SECRET",
         "EXA_API_KEY",
         "RETRIEVAL_API",
-        "ENCRYPTION_KEY"
+        "ENCRYPTION_KEY",
+        "ENCRYPTION_KEY_STORAGE"
       ]
     }
   }

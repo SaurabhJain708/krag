@@ -39,7 +39,8 @@ import {
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-const ENCRYPTION_KEY_STORAGE = "encryption_key";
+const ENCRYPTION_KEY_STORAGE =
+  process.env.ENCRYPTION_KEY_STORAGE || "encryption_key";
 
 export default function SettingsPage() {
   const user = useCurrentUser();
