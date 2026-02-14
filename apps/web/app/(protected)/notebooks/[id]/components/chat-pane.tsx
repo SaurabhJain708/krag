@@ -319,7 +319,22 @@ export function ChatPane({
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {messages.map((msg) => (
+                  {(() => {
+                    // Filter out the last assistant message if it's empty and processing is active
+                    const filteredMessages = [...messages];
+                    if (isLoading && filteredMessages.length > 0) {
+                      const lastMessage =
+                        filteredMessages[filteredMessages.length - 1];
+                      if (
+                        lastMessage &&
+                        lastMessage.role === "assistant" &&
+                        !lastMessage.content?.trim()
+                      ) {
+                        filteredMessages.pop();
+                      }
+                    }
+                    return filteredMessages;
+                  })().map((msg) => (
                     <ChatMessage
                       key={msg.id}
                       role={msg.role}

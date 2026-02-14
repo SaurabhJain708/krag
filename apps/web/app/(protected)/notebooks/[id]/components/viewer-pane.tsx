@@ -4,6 +4,7 @@ import { useMemo, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/server/trpc/react";
 import { Streamdown } from "streamdown";
+import { X, FileText, Eye } from "lucide-react";
 import type { ActiveCitation } from "./chat-pane";
 
 const ENCRYPTION_KEY_STORAGE =
@@ -294,29 +295,41 @@ export function ViewerPane({ activeCitation, onClear }: ViewerPaneProps) {
   return (
     <div className="bg-card border-border/40 flex w-full flex-col overflow-hidden rounded-lg border shadow-sm lg:w-[500px] xl:w-[600px] 2xl:w-[720px]">
       {hasCitation ? (
-        <div className="border-border/50 bg-background/50 flex h-14 items-center justify-between border-b px-5">
-          <div className="flex min-w-0 flex-1 items-center">
-            {isLoading ? (
-              <div className="bg-muted h-4 w-32 animate-pulse rounded" />
-            ) : (
-              <span className="text-foreground truncate text-sm font-semibold">
-                {source?.name || "Source"}
-              </span>
-            )}
+        <div className="border-border/50 bg-background/80 flex h-14 items-center justify-between border-b px-4 pt-3 pb-3 shadow-sm backdrop-blur-sm">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <div className="bg-primary/10 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-md">
+              <FileText className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              {isLoading ? (
+                <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+              ) : (
+                <span className="text-foreground truncate text-sm font-semibold">
+                  {source?.name || "Source"}
+                </span>
+              )}
+            </div>
           </div>
           <Button
             variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground h-7 w-7 shrink-0"
+            size="icon-sm"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground h-7 w-7 shrink-0 cursor-pointer transition-colors"
             onClick={onClear}
             title="Close viewer"
           >
-            ✕
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       ) : (
-        <div className="border-border/50 bg-background/50 flex h-14 items-center justify-between border-b px-5">
-          <span className="text-foreground text-sm font-semibold">Viewer</span>
+        <div className="border-border/50 bg-background/80 flex h-14 items-center justify-between border-b px-4 pt-3 pb-3 shadow-sm backdrop-blur-sm">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-muted flex h-7 w-7 shrink-0 items-center justify-center rounded-md">
+              <Eye className="text-muted-foreground h-3.5 w-3.5" />
+            </div>
+            <span className="text-foreground text-sm font-semibold">
+              Viewer
+            </span>
+          </div>
         </div>
       )}
 
