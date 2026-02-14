@@ -13,6 +13,9 @@ COPY . .
 # and install only what's needed for ingestion-worker
 RUN uv sync --frozen --workspace --no-dev
 
+# Generate Prisma Python client for ingestion-worker
+RUN cd apps/ingestion-worker && uv run prisma generate --schema=../../packages/database/prisma/schema.prisma --generator client_py
+
 # Stage 2: Runtime - Minimal image with only runtime dependencies
 FROM python:3.12-slim
 

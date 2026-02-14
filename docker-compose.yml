@@ -1,23 +1,43 @@
 version: '3.8'
 
+x-common-env: &common-env
+  DATABASE_URL: ${DATABASE_URL}
+  DIRECT_URL: ${DIRECT_URL}
+  REDIS_URL: ${REDIS_URL}
+  MODAL_TOKEN_ID: ${MODAL_TOKEN_ID}
+  MODAL_TOKEN_SECRET: ${MODAL_TOKEN_SECRET}
+  EXA_API_KEY: ${EXA_API_KEY}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+  ENCRYPTION_KEY_STORAGE: ${ENCRYPTION_KEY_STORAGE}
+  SUPABASE_URL: ${SUPABASE_URL}
+  SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: krag-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-krag}
+  # Supabase PostgreSQL (Local Development)
+  supabase-db:
+    image: supabase/postgres:15.1.0.117
+    container_name: krag-supabase-db
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${SUPABASE_DB_PORT:-54322}:5432"
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      PGDATABASE: postgres
+      PGUSER: supabase_admin
+      POSTGRES_USER: supabase_admin
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXP}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - supabase_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U supabase_admin"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - krag-network
 
@@ -38,28 +58,23 @@ services:
     networks:
       - krag-network
 
-  # Ingestion Worker
+  # Ingestion Worker (3 instances)
   ingestion-worker:
     build:
       context: .
       dockerfile: apps/ingestion-worker/Dockerfile
-    container_name: krag-ingestion-worker
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/krag}
-      DIRECT_URL: ${DIRECT_URL:-postgresql://postgres:postgres@postgres:5432/krag}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      MODAL_TOKEN_ID: ${MODAL_TOKEN_ID}
-      MODAL_TOKEN_SECRET: ${MODAL_TOKEN_SECRET}
-      EXA_API_KEY: ${EXA_API_KEY}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      <<: *common-env
     depends_on:
-      postgres:
+      supabase-db:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - krag-network
+    deploy:
+      replicas: 3
 
   # Retrieval Worker
   retrieval-worker:
@@ -67,18 +82,11 @@ services:
       context: .
       dockerfile: apps/retrieval-worker/Dockerfile
     container_name: krag-retrieval-worker
-    ports:
-      - "${RETRIEVAL_PORT:-8002}:8002"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/krag}
-      DIRECT_URL: ${DIRECT_URL:-postgresql://postgres:postgres@postgres:5432/krag}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      MODAL_TOKEN_ID: ${MODAL_TOKEN_ID}
-      MODAL_TOKEN_SECRET: ${MODAL_TOKEN_SECRET}
-      RETRIEVAL_API: ${RETRIEVAL_API:-http://retrieval-worker:8002}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      <<: *common-env
+      RETRIEVAL_API: ${RETRIEVAL_API}
     depends_on:
-      postgres:
+      supabase-db:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -91,26 +99,22 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NODE_ENV: ${NODE_ENV:-production}
+        ENCRYPTION_KEY_STORAGE: ${ENCRYPTION_KEY_STORAGE}
     container_name: krag-web
     ports:
       - "${WEB_PORT:-3001}:3001"
     environment:
-      NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/krag}
-      DIRECT_URL: ${DIRECT_URL:-postgresql://postgres:postgres@postgres:5432/krag}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      SUPABASE_URL: ${SUPABASE_URL}
+      <<: *common-env
+      NODE_ENV: ${NODE_ENV:-production}
       SUPABASE_KEY: ${SUPABASE_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-      RETRIEVAL_API: ${RETRIEVAL_API:-http://retrieval-worker:8002}
-      MODAL_TOKEN_ID: ${MODAL_TOKEN_ID}
-      MODAL_TOKEN_SECRET: ${MODAL_TOKEN_SECRET}
-      EXA_API_KEY: ${EXA_API_KEY}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      RETRIEVAL_API: ${RETRIEVAL_API}
     depends_on:
-      postgres:
+      supabase-db:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -121,7 +125,7 @@ services:
       - krag-network
 
 volumes:
-  postgres_data:
+  supabase_db_data:
   redis_data:
 
 networks:

@@ -13,6 +13,9 @@ COPY . .
 # and install only what's needed for retrieval-worker
 RUN uv sync --frozen --workspace --no-dev
 
+# Generate Prisma Python client for retrieval-worker
+RUN cd apps/retrieval-worker && uv run prisma generate --schema=../../packages/database/prisma/schema.prisma --generator client_py_retrieval
+
 # Stage 2: Runtime - Minimal image with only runtime dependencies
 FROM python:3.12-slim
 

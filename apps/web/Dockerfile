@@ -11,12 +11,22 @@ COPY . .
 # Install dependencies using npm workspaces
 RUN npm ci
 
+# Build arguments
+ARG NEXT_PUBLIC_API_URL
+ARG NODE_ENV=production
+ARG ENCRYPTION_KEY_STORAGE
+
+# Set environment variables for build stage
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NODE_ENV=$NODE_ENV
+ENV ENCRYPTION_KEY_STORAGE=$ENCRYPTION_KEY_STORAGE
+
 # Generate Prisma client (doesn't require DATABASE_URL, only for migrations)
 # Generate only the Node.js client, not Python clients
 RUN cd packages/database && npx prisma@5.17.0 generate --generator client || echo "Warning: Prisma generation may have failed, but continuing..."
 
 # Build the Next.js app
-# Note: Build-time env vars should be provided via --build-arg
+
 WORKDIR /app/apps/web
 RUN npm run build
 
