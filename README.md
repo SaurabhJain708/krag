@@ -2,11 +2,17 @@
 
 <div align="center">
 
-<img src="apps/web/public/logo.png" alt="KRAG Logo" width="200" height="200" style="margin-bottom: 30px;">
+<div style="margin: 40px 0;">
+  <div style="border-top: 3px solid #e1e4e8; width: 200px; margin: 0 auto 30px;"></div>
+  
+  <img src="apps/web/public/logo.png" alt="KRAG Logo" width="280" height="280" style="display: block; margin: 0 auto 30px; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));">
+  
+  <div style="border-bottom: 3px solid #e1e4e8; width: 200px; margin: 0 auto 30px;"></div>
+</div>
 
 **"The wolf that lurks in the shadows sees everything, yet remains unseen"**
 
-World's First Serverless RAG Agent
+### World's First Serverless RAG Agent
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
