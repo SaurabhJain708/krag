@@ -149,8 +149,30 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
-      <div className="container mx-auto max-w-4xl px-6 py-8">
+    <div className="bg-background relative min-h-screen">
+      {/* Decorative favicon watermarks */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute top-32 right-10 opacity-[0.03]">
+          <Image
+            src="/favicon.ico"
+            alt=""
+            width={250}
+            height={250}
+            className="rounded-lg"
+          />
+        </div>
+        <div className="absolute bottom-32 left-10 opacity-[0.03]">
+          <Image
+            src="/favicon.ico"
+            alt=""
+            width={200}
+            height={200}
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
+      <div className="relative container mx-auto max-w-4xl px-6 py-8">
         <div className="mb-8">
           <div className="mb-2 flex items-center gap-4">
             <Button

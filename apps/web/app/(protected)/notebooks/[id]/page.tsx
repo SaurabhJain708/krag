@@ -2,6 +2,7 @@
 
 import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { signOut } from "@/lib/auth-client";
 import { trpc } from "@/server/trpc/react";
 import { toast } from "sonner";
@@ -261,7 +262,29 @@ export default function NotebookDetailPage({
   }
 
   return (
-    <div className="bg-muted/20 flex h-screen flex-col overflow-hidden">
+    <div className="bg-muted/20 relative flex h-screen flex-col overflow-hidden">
+      {/* Decorative favicon watermarks */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute top-24 right-8 opacity-[0.02]">
+          <Image
+            src="/favicon.ico"
+            alt=""
+            width={180}
+            height={180}
+            className="rounded-lg"
+          />
+        </div>
+        <div className="absolute bottom-24 left-8 opacity-[0.02]">
+          <Image
+            src="/favicon.ico"
+            alt=""
+            width={150}
+            height={150}
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
       <Header
         notebookName={notebook?.name}
         isLoadingNotebook={isLoadingNotebook}

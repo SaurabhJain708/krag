@@ -77,9 +77,31 @@ export default function NotebooksPage() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background relative min-h-screen">
+      {/* Decorative favicon watermarks */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute top-32 right-10 opacity-[0.03]">
+          <Image
+            src="/favicon.ico"
+            alt=""
+            width={250}
+            height={250}
+            className="rounded-lg"
+          />
+        </div>
+        <div className="absolute bottom-32 left-10 opacity-[0.03]">
+          <Image
+            src="/favicon.ico"
+            alt=""
+            width={200}
+            height={200}
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
       {/* Header */}
-      <header className="border-border/40 bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-0 z-40 border-b shadow-sm backdrop-blur-md">
+      <header className="border-border/40 bg-background/80 supports-backdrop-filter:bg-background/60 relative sticky top-0 z-40 border-b shadow-sm backdrop-blur-md">
         <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="group flex items-center gap-3">
@@ -155,7 +177,7 @@ export default function NotebooksPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-6">
+      <div className="relative container mx-auto px-6 py-6">
         {/* Controls */}
         <div className="mb-6 flex items-center justify-end">
           <div className="flex items-center gap-3">
