@@ -67,6 +67,8 @@ export const CreateMessage = protectedProcedure
 
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
+    console.log(content);
+
     try {
       const response = await fetch(`${process.env.RETRIEVAL_API}`, {
         method: "POST",

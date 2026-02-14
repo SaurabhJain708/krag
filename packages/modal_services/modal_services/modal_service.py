@@ -1,4 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import modal
+
+if TYPE_CHECKING:
+    import torch
 
 try:
     from dotenv import load_dotenv
@@ -393,6 +400,60 @@ class MXBAIRerankerV2:
         return [{"content": r["content"], "id": r["id"]} for r in top_results]
 
 
+class GeneralizedLoopBreaker:
+    def __init__(self, min_pattern_len: int = 1, max_pattern_len: int = 5):
+        """
+        Detects and breaks strictly immediate repetition loops.
+
+        Args:
+            min_pattern_len: Smallest loop to detect (1 = stutter).
+            max_pattern_len: Largest loop to detect (5 = repeating a 5-token phrase).
+                             Larger numbers are safer but slightly slower (micro-seconds).
+        """
+        self.min_n = min_pattern_len
+        self.max_n = max_pattern_len
+
+    def __call__(self, input_ids: list[int], scores: torch.Tensor) -> torch.Tensor:
+        # We need at least enough tokens to form a repetition pattern
+        # Max check is 2 * max_n (e.g., A B C D E A B C D E needs 10 tokens)
+        history_len = len(input_ids)
+
+        # Optimization: Only check pattern lengths that are physically possible
+        # given the current history length.
+        actual_max_n = min(self.max_n, history_len // 2)
+
+        # Iterate through pattern lengths (e.g., 1, 2, 3, 4, 5)
+        for n in range(self.min_n, actual_max_n + 1):
+
+            # 1. Get the pattern we just completed (the last n tokens)
+            # Example (n=3): [... A B C]
+            current_pattern = input_ids[-n:]
+
+            # 2. Get the sequence immediately before it
+            # Example (n=3): [... A B C] [A B C]
+            #                    ^prev^   ^curr^
+            previous_pattern = input_ids[-2 * n : -n]
+
+            # 3. Check for exact match
+            if current_pattern == previous_pattern:
+                # We have found a loop!
+                # The model has generated [Pattern] [Pattern].
+                # If we do nothing, it will generate the first token of [Pattern] again.
+                # Example: ... A B C A B C [Next expected is A]
+
+                # The token to ban is the first token of the repeated pattern
+                token_to_ban = current_pattern[0]
+
+                # Set probability to 0 (score to -infinity)
+                scores[token_to_ban] = -float("inf")
+
+                # Optimization: If we find a loop, we break it and stop checking other lengths.
+                # Breaking the smallest loop usually breaks the larger structure too.
+                break
+
+        return scores
+
+
 @app.cls(
     gpu="L4",
     image=qwen_14b_awq_image,
@@ -439,12 +500,15 @@ class Qwen2_5_14BAWQ:
         if json_schema:
             guided_options = GuidedDecodingParams(json=json_schema)
 
+        loop_breaker = GeneralizedLoopBreaker(min_pattern_len=1, max_pattern_len=8)
+
         sampling_params = SamplingParams(
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=0.95,
             repetition_penalty=1.1,
             guided_decoding=guided_options,
+            logits_processors=[loop_breaker],
         )
 
         request_id = str(uuid.uuid4())
