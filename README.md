@@ -15,75 +15,21 @@ World's First Serverless RAG Agent
 
 ---
 
-<style>
-  .tabs-container {
-    margin: 20px 0;
-  }
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    border-bottom: 2px solid #e1e4e8;
-    margin-bottom: 0;
-  }
-  .tab-input {
-    display: none;
-  }
-  .tab-label {
-    padding: 12px 24px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: #586069;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: all 0.2s;
-    display: inline-block;
-  }
-  .tab-label:hover {
-    color: #0366d6;
-  }
-  .tab-input:checked + .tab-label {
-    color: #0366d6;
-    border-bottom-color: #0366d6;
-  }
-  .tab-content {
-    display: none;
-    padding: 20px 0;
-  }
-  #tab-intro:checked ~ .tab-content#intro,
-  #tab-features:checked ~ .tab-content#features,
-  #tab-development:checked ~ .tab-content#development,
-  #tab-deployment:checked ~ .tab-content#deployment,
-  #tab-api:checked ~ .tab-content#api,
-  #tab-license:checked ~ .tab-content#license {
-    display: block;
-  }
-</style>
+## 📑 Table of Contents
 
-<div class="tabs-container">
-  <div class="tabs">
-    <input type="radio" id="tab-intro" name="tabs" class="tab-input" checked>
-    <label for="tab-intro" class="tab-label">Introduction & Setup</label>
-    
-    <input type="radio" id="tab-features" name="tabs" class="tab-input">
-    <label for="tab-features" class="tab-label">Features & Architecture</label>
-    
-    <input type="radio" id="tab-development" name="tabs" class="tab-input">
-    <label for="tab-development" class="tab-label">Development</label>
-    
-    <input type="radio" id="tab-deployment" name="tabs" class="tab-input">
-    <label for="tab-deployment" class="tab-label">Deployment & Config</label>
-    
-    <input type="radio" id="tab-api" name="tabs" class="tab-input">
-    <label for="tab-api" class="tab-label">API & Contributing</label>
-    
-    <input type="radio" id="tab-license" name="tabs" class="tab-input">
-    <label for="tab-license" class="tab-label">License</label>
-  </div>
-  
-  <div id="intro" class="tab-content">
+- [Introduction](#-introduction)
+- [Quick Start](#-quick-start)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Development](#-development)
+- [Deployment](#-deployment)
+- [Configuration](#-configuration)
+- [API Documentation](#-api-documentation)
+- [Models & LLMs](#-models--llms)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
 
 ## 🚀 Introduction
 
@@ -100,7 +46,7 @@ KRAG is a production-ready, serverless Retrieval-Augmented Generation (RAG) plat
 
 ---
 
-## 🛠️ Setup & Installation
+## 🛠️ Quick Start
 
 ### Prerequisites
 
@@ -110,7 +56,7 @@ KRAG is a production-ready, serverless Retrieval-Augmented Generation (RAG) plat
 - **UV** (Python package manager)
 - **npm** 11.5.1+
 
-### Quick Setup
+### Setup Steps
 
 1. **Clone the repository:**
 
@@ -162,9 +108,7 @@ The `.env.example` file contains all required environment variables. After copyi
 
 All other variables are pre-configured for local development.
 
-  </div>
-  
-  <div id="features" class="tab-content">
+---
 
 ## ✨ Features
 
@@ -240,7 +184,7 @@ krag/
 │       │   ├── process_request.py    # Request processing
 │       │   └── llm_client.py         # LLM integration
 │       ├── schemas/                  # Data schemas
-│       └── utils/                # Utility functions
+│       └── utils/                    # Utility functions
 ├── packages/
 │   ├── database/                     # Prisma schema and database client
 │   │   ├── prisma/                   # Prisma schema and migrations
@@ -299,21 +243,7 @@ krag/
    - Context retrieved and sent to LLM (Qwen 2.5)
    - Streaming response delivered to user
 
-### AI Models & Services
-
-KRAG leverages state-of-the-art AI models deployed on Modal:
-
-- **PDF Processing**: Marker PDF Parser for document extraction
-- **Image Understanding**: Florence-2 for image captioning
-- **Embeddings**: BGE-M3 for semantic search vectors
-- **Reranking**: MXBAI Reranker V2 for result relevance
-- **Text Generation**: Qwen 2.5 14B Instruct for intelligent responses
-
-See the [License tab](#license) for detailed model information and licensing.
-
-  </div>
-  
-  <div id="development" class="tab-content">
+---
 
 ## 💻 Development
 
@@ -365,9 +295,7 @@ Husky is configured with pre-commit hooks for:
 - Type checking
 - Code formatting
 
-  </div>
-
-  <div id="deployment" class="tab-content">
+---
 
 ## 🚢 Deployment
 
@@ -454,9 +382,7 @@ Documents go through the following states:
 - Performs vector similarity search
 - Streams responses via SSE
 
-  </div>
-
-  <div id="api" class="tab-content">
+---
 
 ## 📡 API Documentation
 
@@ -501,103 +427,6 @@ The application uses tRPC for type-safe API communication:
 **Authentication:**
 
 - Handled by Better Auth at `/api/auth/*`
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these guidelines:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes** following the code style:
-   - TypeScript/JavaScript: ESLint + Prettier
-   - Python: Black + Ruff
-4. **Run tests and linting**: `npm run lint && npm run check-types`
-5. **Commit your changes**: `git commit -m 'Add amazing feature'`
-6. **Push to the branch**: `git push origin feature/amazing-feature`
-7. **Open a Pull Request**
-
-### Code Style
-
-- Follow existing code patterns
-- Write clear, descriptive commit messages
-- Add comments for complex logic
-- Update documentation as needed
-
----
-
-## 📞 Support
-
-For issues, questions, or contributions:
-
-- Open an issue on GitHub
-- Check existing documentation
-- Review code comments and inline docs
-
----
-
-## 🙏 Acknowledgments
-
-- Built with [Turborepo](https://turbo.build/)
-- UI components from [Radix UI](https://www.radix-ui.com/)
-- Styling with [Tailwind CSS](https://tailwindcss.com/)
-- Serverless functions powered by [Modal](https://modal.com/)
-- Database by [Supabase](https://supabase.com/)
-
-  </div>
-
-  <div id="license" class="tab-content">
-
-## 📄 License
-
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
-
-### GPL-3.0 License Details
-
-The GNU General Public License is a free, copyleft license for software and other kinds of works. The GPL-3.0 ensures that:
-
-#### Your Rights
-
-- **Freedom to Use**: You may use the software for any purpose, including commercial use
-- **Freedom to Study**: You have access to the source code
-- **Freedom to Modify**: You can modify the software to suit your needs
-- **Freedom to Distribute**: You can share the software with others
-
-#### Your Obligations
-
-- **Source Code Disclosure**: If you distribute the software, you must provide the source code
-- **License Preservation**: Any modifications must also be released under GPL-3.0
-- **Copyright Notice**: You must include the original copyright notice and license
-- **State Changes**: You must document any significant changes made to the software
-
-#### Copyleft Requirement
-
-The GPL-3.0 is a "copyleft" license, meaning that derivative works must also be licensed under GPL-3.0. This ensures that improvements to the software remain free and open-source.
-
-#### Commercial Use
-
-Commercial use is permitted, but if you distribute the software, you must:
-
-- Provide source code
-- License derivative works under GPL-3.0
-- Include copyright and license notices
-
-For the full license text, see the [LICENSE](LICENSE) file in the repository.
-
-### Third-Party Licenses
-
-This project uses several open-source libraries and services. Key dependencies include:
-
-- **Next.js**: MIT License
-- **React**: MIT License
-- **Prisma**: Apache 2.0 License
-- **tRPC**: MIT License
-- **Better Auth**: MIT License
-- **Modal**: Proprietary (see [Modal's terms](https://modal.com/terms))
-- **Supabase**: Apache 2.0 License
-
-Please review individual package licenses in `node_modules` and Python packages for complete licensing information.
 
 ---
 
@@ -696,8 +525,100 @@ All models are deployed on [Modal](https://modal.com/) with the following charac
 
 Please review individual model licenses for commercial use requirements.
 
-  </div>
-</div>
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** following the code style:
+   - TypeScript/JavaScript: ESLint + Prettier
+   - Python: Black + Ruff
+4. **Run tests and linting**: `npm run lint && npm run check-types`
+5. **Commit your changes**: `git commit -m 'Add amazing feature'`
+6. **Push to the branch**: `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
+
+### Code Style
+
+- Follow existing code patterns
+- Write clear, descriptive commit messages
+- Add comments for complex logic
+- Update documentation as needed
+
+---
+
+## 📄 License
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+### GPL-3.0 License Details
+
+The GNU General Public License is a free, copyleft license for software and other kinds of works. The GPL-3.0 ensures that:
+
+#### Your Rights
+
+- **Freedom to Use**: You may use the software for any purpose, including commercial use
+- **Freedom to Study**: You have access to the source code
+- **Freedom to Modify**: You can modify the software to suit your needs
+- **Freedom to Distribute**: You can share the software with others
+
+#### Your Obligations
+
+- **Source Code Disclosure**: If you distribute the software, you must provide the source code
+- **License Preservation**: Any modifications must also be released under GPL-3.0
+- **Copyright Notice**: You must include the original copyright notice and license
+- **State Changes**: You must document any significant changes made to the software
+
+#### Copyleft Requirement
+
+The GPL-3.0 is a "copyleft" license, meaning that derivative works must also be licensed under GPL-3.0. This ensures that improvements to the software remain free and open-source.
+
+#### Commercial Use
+
+Commercial use is permitted, but if you distribute the software, you must:
+
+- Provide source code
+- License derivative works under GPL-3.0
+- Include copyright and license notices
+
+For the full license text, see the [LICENSE](LICENSE) file in the repository.
+
+### Third-Party Licenses
+
+This project uses several open-source libraries and services. Key dependencies include:
+
+- **Next.js**: MIT License
+- **React**: MIT License
+- **Prisma**: Apache 2.0 License
+- **tRPC**: MIT License
+- **Better Auth**: MIT License
+- **Modal**: Proprietary (see [Modal's terms](https://modal.com/terms))
+- **Supabase**: Apache 2.0 License
+
+Please review individual package licenses in `node_modules` and Python packages for complete licensing information.
+
+---
+
+## 📞 Support
+
+For issues, questions, or contributions:
+
+- Open an issue on GitHub
+- Check existing documentation
+- Review code comments and inline docs
+
+---
+
+## 🙏 Acknowledgments
+
+- Built with [Turborepo](https://turbo.build/)
+- UI components from [Radix UI](https://www.radix-ui.com/)
+- Styling with [Tailwind CSS](https://tailwindcss.com/)
+- Serverless functions powered by [Modal](https://modal.com/)
+- Database by [Supabase](https://supabase.com/)
 
 ---
 
