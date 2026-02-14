@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import modal
 
 if TYPE_CHECKING:
-    import torch
+    import torch  # type: ignore
 
 try:
     from dotenv import load_dotenv

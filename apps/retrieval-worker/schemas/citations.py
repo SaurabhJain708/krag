@@ -52,23 +52,14 @@ class TextWithCitations(BaseModel):
     citations array, allowing for traceable and verifiable AI responses.
 
     IMPORTANT: All text fields must NOT contain backslashes (\) or LaTeX syntax.
-    Use plain text or simple markdown formatting only.
+    Use plain text only - NO markdown formatting. Do NOT use newlines (\\n) or line breaks - write as a single continuous paragraph.
     """
 
-    # Reasoning is optional and ignored by downstream logic; the core
-    # pipeline only relies on `text` and `citations`. We keep this field
-    # for backwards compatibility but do not require the model to output it.
-    reasoning: str | None = Field(
-        default=None,
-        alias="_reasoning",
-        description="Explain why you are using the citations in the text.",
-    )
     text: str = Field(
         ...,
         description="The main text content with embedded citation markers in the "
         "format [CITATION: N] where N is the citation number. These markers indicate "
-        "where in the text a citation should be referenced. "
-        r"CRITICAL: Do NOT use backslashes (\) or LaTeX syntax. Use plain text or simple markdown only.",
+        "where in the text a citation should be referenced. ",
     )
     citations: list[Citation] = Field(
         ...,

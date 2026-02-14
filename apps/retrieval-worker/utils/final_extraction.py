@@ -37,8 +37,7 @@ def build_prompt(filtered_query_results: list, user_query: str) -> str:
 ### RESPONSE FORMAT
 Return a SINGLE valid JSON object (no markdown). Schema:
 {
-    "_reasoning": "Briefly explain which sources you selected and why.",
-    "text": "Detailed answer in GitHub Markdown. Cover all sub-questions. End with a short follow-up question. MUST include [CITATION: N] markers throughout.",
+    "text": "Detailed answer in Text. Cover all sub-questions. End with a short follow-up question. MUST include [CITATION: N] markers throughout.",
     "citations": [
         {
             "citation": "1",
@@ -60,7 +59,7 @@ NOTE: The "citations" array is REQUIRED and must contain citations for all relev
 
 ### EXAMPLE
 Context: <source id="doc_A"><content>The sky is blue <<<99>>> due to Rayleigh scattering.</content></source>
-Output: {"_reasoning": "Found explanation in doc_A, block 99.", "text": "The sky appears blue because of Rayleigh scattering [CITATION: 1].\\n\\n**Did you know this affects sunset colors?**", "citations": [{"citation": "1", "sourceId": "doc_A", "chunkId": "99", "brief_summary": "Explains Rayleigh scattering"}]}
+Output: {"text": "The sky appears blue because of Rayleigh scattering [CITATION: 1]. Did you know this affects sunset colors?", "citations": [{"citation": "1", "sourceId": "doc_A", "chunkId": "99", "brief_summary": "Explains Rayleigh scattering"}]}
 """
 
     # 3. User Prompt
@@ -106,20 +105,8 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
         __base__=Citation,
     )
 
-    text_fields = TextWithCitations.model_fields
     TextWithCitationsWithEnum = create_model(
         "TextWithCitations",
-        # Reasoning is helpful but not strictly required for downstream logic,
-        # and some model outputs may omit it. Make it optional here to avoid
-        # hard failures on otherwise useful answers.
-        reasoning=(
-            str | None,
-            Field(
-                default=None,
-                alias="_reasoning",
-                description=text_fields["reasoning"].description,
-            ),
-        ),
         text=(
             str,
             Field(
@@ -130,7 +117,6 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
                     "Each citation marker must correspond to an entry in the citations array. "
                     "Use the format [CITATION: 1] [CITATION: 2] (never combine them). "
                     "Citations are MANDATORY - do not write text without citation markers. "
-                    "Do NOT use backslashes (\\) or LaTeX syntax. Use plain text or simple markdown only."
                 ),
             ),
         ),
