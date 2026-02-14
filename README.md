@@ -2,7 +2,9 @@
 
 <div align="center">
 
-<img src="apps/web/app/favicon.ico" alt="KRAG Logo" width="120" height="120" style="background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08); margin-bottom: 30px; display: inline-block;">
+<div style="background-color: #ffffff; padding: 25px; border-radius: 25px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08); display: inline-block; margin-bottom: 30px; border: 1px solid #e1e4e8;">
+  <img src="apps/web/app/favicon.ico" alt="KRAG Logo" width="140" height="140" style="display: block;">
+</div>
 
 **"The wolf that lurks in the shadows sees everything, yet remains unseen"**
 
