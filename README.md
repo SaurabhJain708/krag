@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="apps/web/app/favicon.ico" alt="KRAG Logo" width="120" height="120" style="background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08); margin-bottom: 30px; display: inline-block;">
+
 **"The wolf that lurks in the shadows sees everything, yet remains unseen"**
 
 World's First Serverless RAG Agent
