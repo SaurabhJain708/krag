@@ -15,20 +15,75 @@ World's First Serverless RAG Agent
 
 ---
 
-## 📑 Table of Contents
+<style>
+  .tabs-container {
+    margin: 20px 0;
+  }
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 2px solid #e1e4e8;
+    margin-bottom: 0;
+  }
+  .tab-input {
+    display: none;
+  }
+  .tab-label {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #586069;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    display: inline-block;
+  }
+  .tab-label:hover {
+    color: #0366d6;
+  }
+  .tab-input:checked + .tab-label {
+    color: #0366d6;
+    border-bottom-color: #0366d6;
+  }
+  .tab-content {
+    display: none;
+    padding: 20px 0;
+  }
+  #tab-intro:checked ~ .tab-content#intro,
+  #tab-features:checked ~ .tab-content#features,
+  #tab-development:checked ~ .tab-content#development,
+  #tab-deployment:checked ~ .tab-content#deployment,
+  #tab-api:checked ~ .tab-content#api,
+  #tab-license:checked ~ .tab-content#license {
+    display: block;
+  }
+</style>
 
-- [Introduction](#-introduction)
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [Setup & Installation](#-setup--installation)
-- [Development](#-development)
-- [Deployment](#-deployment)
-- [Configuration](#-configuration)
-- [API Documentation](#-api-documentation)
-- [Contributing](#-contributing)
-- [License](#-license)
-
----
+<div class="tabs-container">
+  <div class="tabs">
+    <input type="radio" id="tab-intro" name="tabs" class="tab-input" checked>
+    <label for="tab-intro" class="tab-label">Introduction & Setup</label>
+    
+    <input type="radio" id="tab-features" name="tabs" class="tab-input">
+    <label for="tab-features" class="tab-label">Features & Architecture</label>
+    
+    <input type="radio" id="tab-development" name="tabs" class="tab-input">
+    <label for="tab-development" class="tab-label">Development</label>
+    
+    <input type="radio" id="tab-deployment" name="tabs" class="tab-input">
+    <label for="tab-deployment" class="tab-label">Deployment & Config</label>
+    
+    <input type="radio" id="tab-api" name="tabs" class="tab-input">
+    <label for="tab-api" class="tab-label">API & Contributing</label>
+    
+    <input type="radio" id="tab-license" name="tabs" class="tab-input">
+    <label for="tab-license" class="tab-label">License</label>
+  </div>
+  
+  <div id="intro" class="tab-content">
 
 ## 🚀 Introduction
 
@@ -44,6 +99,72 @@ KRAG is a production-ready, serverless Retrieval-Augmented Generation (RAG) plat
 - **Modern Stack**: Next.js 16, tRPC, Prisma, Python workers
 
 ---
+
+## 🛠️ Setup & Installation
+
+### Prerequisites
+
+- **Node.js** >= 18
+- **Python** >= 3.12
+- **Docker** and **Docker Compose** (for local services)
+- **UV** (Python package manager)
+- **npm** 11.5.1+
+
+### Quick Setup
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone <repository-url>
+   cd krag
+   ```
+
+2. **Copy environment file and add Modal keys:**
+
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your MODAL_TOKEN_ID and MODAL_TOKEN_SECRET
+   ```
+
+3. **Start Docker services:**
+
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Run repository setup:**
+   ```bash
+   npm run repo:setup
+   ```
+
+That's it! The setup script will:
+
+- Install all Node.js and Python dependencies
+- Deploy database migrations
+- Deploy Modal services
+
+### Access the Application
+
+Once setup is complete, start the development servers:
+
+```bash
+npm run dev
+```
+
+Access the application at `http://localhost:3001`
+
+### Environment Variables
+
+The `.env.example` file contains all required environment variables. After copying it to `.env`, you only need to add your Modal credentials:
+
+- `MODAL_TOKEN_ID` - Your Modal token ID
+- `MODAL_TOKEN_SECRET` - Your Modal token secret
+
+All other variables are pre-configured for local development.
+
+  </div>
+  
+  <div id="features" class="tab-content">
 
 ## ✨ Features
 
@@ -119,7 +240,7 @@ krag/
 │       │   ├── process_request.py    # Request processing
 │       │   └── llm_client.py         # LLM integration
 │       ├── schemas/                  # Data schemas
-│       └── utils/                    # Utility functions
+│       └── utils/                # Utility functions
 ├── packages/
 │   ├── database/                     # Prisma schema and database client
 │   │   ├── prisma/                   # Prisma schema and migrations
@@ -173,108 +294,60 @@ krag/
 2. **Query Processing:**
    - User sends query via chat interface
    - Retrieval worker processes request
-   - Vector similarity search on embeddings
-   - Context retrieved and sent to LLM
+   - Vector similarity search on embeddings (BGE-M3)
+   - Reranking of results (MXBAI Reranker)
+   - Context retrieved and sent to LLM (Qwen 2.5)
    - Streaming response delivered to user
 
----
+### AI Models & Services
 
-## 🛠️ Setup & Installation
+KRAG leverages state-of-the-art AI models deployed on Modal:
 
-### Prerequisites
+- **PDF Processing**: Marker PDF Parser for document extraction
+- **Image Understanding**: Florence-2 for image captioning
+- **Embeddings**: BGE-M3 for semantic search vectors
+- **Reranking**: MXBAI Reranker V2 for result relevance
+- **Text Generation**: Qwen 2.5 14B Instruct for intelligent responses
 
-- **Node.js** >= 18
-- **Python** >= 3.12
-- **Docker** and **Docker Compose** (for local services)
-- **UV** (Python package manager)
-- **npm** 11.5.1+
+See the [License tab](#license) for detailed model information and licensing.
 
-### Quick Setup
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone <repository-url>
-   cd krag
-   ```
-
-2. **Copy environment file and add Modal keys:**
-
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your MODAL_TOKEN_ID and MODAL_TOKEN_SECRET
-   ```
-
-3. **Start Docker services:**
-
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Run repository setup:**
-   ```bash
-   npm run repo:setup
-   ```
-
-That's it! The setup script will:
-
-- Install all Node.js and Python dependencies
-- Deploy database migrations
-- Deploy Modal services
-
-### Access the Application
-
-Once setup is complete, start the development servers:
-
-```bash
-npm run dev
-```
-
-Access the application at `http://localhost:3001`
-
-### Environment Variables
-
-The `.env.example` file contains all required environment variables. After copying it to `.env`, you only need to add your Modal credentials:
-
-- `MODAL_TOKEN_ID` - Your Modal token ID
-- `MODAL_TOKEN_SECRET` - Your Modal token secret
-
-All other variables are pre-configured for local development.
-
----
+  </div>
+  
+  <div id="development" class="tab-content">
 
 ## 💻 Development
 
-### Available Scripts
+### Available Commands
 
-**Root level:**
-
-- `npm run dev` - Start all apps in development mode
-- `npm run build` - Build all apps and packages
-- `npm run lint` - Lint all packages
-- `npm run check-types` - Type check all packages
-- `npm run format` - Format code with Prettier
-- `npm run repo:setup` - Complete repository setup
-
-**Web app:**
-
-- `npm run dev` - Start Next.js dev server (port 3001)
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run check-types` - Type check
-
-### Database Management
+All development tasks are run through Turborepo:
 
 ```bash
-# Generate Prisma client
+# Start all apps in development mode
+npx turbo dev
+
+# Build all apps and packages
+npx turbo build
+
+# Lint all packages
+npx turbo lint
+
+# Type check all packages
+npx turbo check-types
+
+# Format code with Prettier
+npm run format
+
+# Database: Generate Prisma client
 npx turbo db:generate
 
-# Run migrations
+# Database: Run migrations
 npx turbo db:migrate
 
-# Deploy schema changes
+# Database: Deploy schema changes
 npx turbo db:deploy
+
+# Complete repository setup
+npm run repo:setup
 ```
 
 ### Code Quality
@@ -292,7 +365,9 @@ Husky is configured with pre-commit hooks for:
 - Type checking
 - Code formatting
 
----
+  </div>
+
+  <div id="deployment" class="tab-content">
 
 ## 🚢 Deployment
 
@@ -379,7 +454,9 @@ Documents go through the following states:
 - Performs vector similarity search
 - Streams responses via SSE
 
----
+  </div>
+
+  <div id="api" class="tab-content">
 
 ## 📡 API Documentation
 
@@ -450,26 +527,6 @@ We welcome contributions! Please follow these guidelines:
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### Third-Party Licenses
-
-This project uses several open-source libraries. Key dependencies include:
-
-- **Next.js**: MIT License
-- **React**: MIT License
-- **Prisma**: Apache 2.0 License
-- **tRPC**: MIT License
-- **Better Auth**: MIT License
-- **Modal**: Proprietary (see Modal's terms)
-- **Supabase**: Apache 2.0 License
-
-Please review individual package licenses in `node_modules` and Python packages for complete licensing information.
-
----
-
 ## 📞 Support
 
 For issues, questions, or contributions:
@@ -487,6 +544,160 @@ For issues, questions, or contributions:
 - Styling with [Tailwind CSS](https://tailwindcss.com/)
 - Serverless functions powered by [Modal](https://modal.com/)
 - Database by [Supabase](https://supabase.com/)
+
+  </div>
+
+  <div id="license" class="tab-content">
+
+## 📄 License
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+### GPL-3.0 License Details
+
+The GNU General Public License is a free, copyleft license for software and other kinds of works. The GPL-3.0 ensures that:
+
+#### Your Rights
+
+- **Freedom to Use**: You may use the software for any purpose, including commercial use
+- **Freedom to Study**: You have access to the source code
+- **Freedom to Modify**: You can modify the software to suit your needs
+- **Freedom to Distribute**: You can share the software with others
+
+#### Your Obligations
+
+- **Source Code Disclosure**: If you distribute the software, you must provide the source code
+- **License Preservation**: Any modifications must also be released under GPL-3.0
+- **Copyright Notice**: You must include the original copyright notice and license
+- **State Changes**: You must document any significant changes made to the software
+
+#### Copyleft Requirement
+
+The GPL-3.0 is a "copyleft" license, meaning that derivative works must also be licensed under GPL-3.0. This ensures that improvements to the software remain free and open-source.
+
+#### Commercial Use
+
+Commercial use is permitted, but if you distribute the software, you must:
+
+- Provide source code
+- License derivative works under GPL-3.0
+- Include copyright and license notices
+
+For the full license text, see the [LICENSE](LICENSE) file in the repository.
+
+### Third-Party Licenses
+
+This project uses several open-source libraries and services. Key dependencies include:
+
+- **Next.js**: MIT License
+- **React**: MIT License
+- **Prisma**: Apache 2.0 License
+- **tRPC**: MIT License
+- **Better Auth**: MIT License
+- **Modal**: Proprietary (see [Modal's terms](https://modal.com/terms))
+- **Supabase**: Apache 2.0 License
+
+Please review individual package licenses in `node_modules` and Python packages for complete licensing information.
+
+---
+
+## 🤖 Models & LLMs
+
+KRAG uses several state-of-the-art AI models deployed on Modal for document processing, embeddings, and text generation. All models are deployed as serverless functions with automatic scaling.
+
+### Document Processing Models
+
+#### Marker PDF Parser
+
+- **Model**: `marker-pdf==1.10.1`
+- **Purpose**: Advanced PDF parsing and text extraction
+- **GPU**: L4 (8 CPU cores)
+- **Features**:
+  - Extracts text from complex PDF layouts
+  - Preserves document structure and formatting
+  - Extracts and processes images from PDFs
+  - Handles multi-column layouts and tables
+- **Usage**: Converts PDF documents to markdown format with embedded images
+
+#### Florence-2 Image Summarizer
+
+- **Model**: `microsoft/Florence-2-large`
+- **Purpose**: Image understanding and captioning
+- **GPU**: L4 (4 CPU cores)
+- **Features**:
+  - Generates detailed captions for images extracted from documents
+  - Provides context-aware image descriptions
+  - Supports various image formats
+- **Usage**: Summarizes images found in PDF documents to provide textual context
+
+### Embedding Models
+
+#### BGE-M3 Embedder
+
+- **Model**: `BAAI/bge-m3`
+- **Purpose**: Multi-lingual text embeddings
+- **GPU**: T4 (4 CPU cores) - GPU version
+- **CPU**: CPU-only version available for cost optimization
+- **Features**:
+  - Generates 1024-dimensional dense embeddings
+  - Supports up to 8192 tokens per text
+  - Multi-lingual support
+  - Batch processing with configurable batch sizes
+- **Usage**: Creates vector embeddings for document chunks to enable semantic search
+
+### Reranking Models
+
+#### MXBAI Reranker V2
+
+- **Model**: `mixedbread-ai/mxbai-rerank-large-v2`
+- **Purpose**: Document relevance reranking
+- **GPU**: L4
+- **Features**:
+  - Reranks search results based on query relevance
+  - Handles documents up to 8k tokens each
+  - Returns top-k most relevant documents
+  - Uses Flash Attention 2 for efficiency
+- **Usage**: Reranks retrieved document chunks to improve retrieval accuracy for RAG queries
+
+### Large Language Models
+
+#### Qwen 2.5 14B Instruct (AWQ)
+
+- **Model**: `Qwen/Qwen2.5-14B-Instruct-AWQ`
+- **Purpose**: Text generation and RAG responses
+- **GPU**: L4
+- **Quantization**: AWQ (4-bit quantization for efficiency)
+- **Features**:
+  - 14 billion parameter instruction-tuned model
+  - Supports up to 16,384 tokens context window
+  - JSON schema-guided generation support
+  - Loop detection and prevention
+  - Temperature and top-p sampling controls
+- **Usage**: Generates intelligent responses based on retrieved context from user queries
+
+### Model Deployment Details
+
+All models are deployed on [Modal](https://modal.com/) with the following characteristics:
+
+- **Automatic Scaling**: Models scale up/down based on demand
+- **GPU Optimization**: Models use appropriate GPU types (L4, T4) for optimal performance
+- **Concurrent Processing**: Multiple concurrent requests per container
+- **Cost Efficiency**: CPU versions available for less intensive tasks
+- **Retry Logic**: Automatic retries on failure
+- **Container Management**: Automatic container lifecycle management with scale-down windows
+
+### Model Licensing
+
+- **Marker PDF**: Check [Marker PDF license](https://github.com/VikParuchuri/marker)
+- **Florence-2**: MIT License (Microsoft)
+- **BGE-M3**: Apache 2.0 License (BAAI)
+- **MXBAI Reranker**: Apache 2.0 License (mixedbread-ai)
+- **Qwen 2.5**: Tongyi Qianwen License (Alibaba Cloud)
+
+Please review individual model licenses for commercial use requirements.
+
+  </div>
+</div>
 
 ---
 
