@@ -2,6 +2,10 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "tasks": {
+    "repo:setup": {
+      "cache": false,
+      "persistent": false
+    },
     "db:generate": {
       "cache": false
     },
