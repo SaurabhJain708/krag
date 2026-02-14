@@ -69,7 +69,7 @@ KRAG is a production-ready, serverless Retrieval-Augmented Generation (RAG) plat
 1. **Clone the repository:**
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/SaurabhJain708/krag
    cd krag
    ```
 
@@ -178,7 +178,7 @@ krag/
 │   │   ├── components/               # React components
 │   │   ├── lib/                      # Utility libraries
 │   │   └── server/                   # Server-side code (tRPC routers)
-│   ├── ingestion-worker/            # Python worker for document processing
+│   ├── ingestion-worker/             # Python worker for document processing
 │   │   ├── lib/                      # Core processing libraries
 │   │   │   ├── pdf_parser.py         # PDF parsing logic
 │   │   │   ├── website_parser.py     # URL content extraction
@@ -186,7 +186,7 @@ krag/
 │   │   │   └── save_to_db.py         # Database operations
 │   │   ├── schemas/                  # Data schemas
 │   │   └── utils/                    # Utility functions
-│   └── retrieval-worker/            # Python worker for RAG queries
+│   └── retrieval-worker/             # Python worker for RAG queries
 │       ├── src/                      # Main application
 │       ├── lib/                      # Core retrieval logic
 │       │   ├── process_request.py    # Request processing

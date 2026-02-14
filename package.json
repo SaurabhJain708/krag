@@ -2,7 +2,7 @@
   "name": "with-tailwind",
   "private": true,
   "scripts": {
-    "repo:setup": "npm install && uv sync --workspace --group dev && npx turbo db:deploy && modal deploy packages/modal_services/modal_services/modal_service.py",
+    "repo:setup": "npm install && uv sync && npx turbo db:deploy && modal deploy packages/modal_services/modal_services/modal_service.py",
     "build": "dotenv -e .env -- turbo run build",
     "dev": "dotenv -e .env -- turbo run dev",
     "lint": "turbo run lint",
