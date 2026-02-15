@@ -1,8 +1,9 @@
 version: '3.8'
 
 x-common-env: &common-env
-  DATABASE_URL: ${DATABASE_URL}
-  DIRECT_URL: ${DIRECT_URL}
+  # Use container service name for Docker, .env file uses localhost for host commands
+  DATABASE_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+  DIRECT_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
   REDIS_URL: ${REDIS_URL}
   MODAL_TOKEN_ID: ${MODAL_TOKEN_ID}
   MODAL_TOKEN_SECRET: ${MODAL_TOKEN_SECRET}
