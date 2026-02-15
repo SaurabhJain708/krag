@@ -116,7 +116,7 @@ services:
       <<: *common-env
       NODE_ENV: ${NODE_ENV:-production}
       SUPABASE_KEY: ${SUPABASE_KEY}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001/api/auth}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       RETRIEVAL_API: ${RETRIEVAL_API}
     depends_on:

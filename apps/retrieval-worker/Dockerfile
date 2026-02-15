@@ -16,6 +16,9 @@ RUN uv sync --frozen --no-dev
 # Generate Prisma Python client for retrieval-worker
 RUN cd apps/retrieval-worker && uv run prisma generate --schema=../../packages/database/prisma/schema.prisma --generator client_py_retrieval
 
+# Fetch Prisma query engine binaries for Python client
+RUN cd apps/retrieval-worker && uv run prisma py fetch
+
 # Stage 2: Runtime - Minimal image with only runtime dependencies
 FROM python:3.12-slim
 
@@ -23,6 +26,9 @@ WORKDIR /app
 
 # Copy virtual environment from builder (contains all installed dependencies)
 COPY --from=builder /app/.venv /app/.venv
+
+# Copy Prisma Python binaries cache (needed for query engine)
+COPY --from=builder /root/.cache/prisma-python /root/.cache/prisma-python
 
 # Copy only the built packages needed for retrieval-worker
 # modal_services is a workspace dependency
