@@ -103,6 +103,11 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NODE_ENV: ${NODE_ENV:-production}
         ENCRYPTION_KEY_STORAGE: ${ENCRYPTION_KEY_STORAGE}
+        DATABASE_URL: ${DATABASE_URL:-postgresql://placeholder:placeholder@localhost:5432/placeholder}
+        BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-placeholder-secret-for-build-only}
+        SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
+        SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-placeholder-key}
+        REDIS_URL: ${REDIS_URL:-redis://placeholder:6379}
     container_name: krag-web
     ports:
       - "${WEB_PORT:-3001}:3001"

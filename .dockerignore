@@ -40,7 +40,6 @@ Thumbs.db
 # Node
 node_modules/
 npm-debug.log*
-package-lock.json
 
 # Note: All apps and packages are included in the build context.
 # Each Dockerfile only copies what it needs to the final image,
