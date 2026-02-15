@@ -83,7 +83,7 @@ KRAG is a production-ready, serverless Retrieval-Augmented Generation (RAG) plat
 3. **Start Docker services:**
 
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. **Run repository setup:**
@@ -313,13 +313,13 @@ The project includes Docker Compose configuration for production deployment:
 
 ```bash
 # Build and start all services
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop services
-docker-compose down
+docker compose down
 ```
 
 ### Services

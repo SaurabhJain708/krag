@@ -11,7 +11,7 @@ COPY . .
 # Install dependencies using uv workspace sync
 # This will automatically resolve the workspace dependency for modal_services
 # and install only what's needed for ingestion-worker
-RUN uv sync --frozen --workspace --no-dev
+RUN uv sync --frozen --no-dev
 
 # Generate Prisma Python client for ingestion-worker
 RUN cd apps/ingestion-worker && uv run prisma generate --schema=../../packages/database/prisma/schema.prisma --generator client_py
