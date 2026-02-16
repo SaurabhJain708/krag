@@ -459,7 +459,7 @@ class GeneralizedLoopBreaker:
     image=qwen_14b_awq_image,
     max_containers=1,
     timeout=600,
-    scaledown_window=60,
+    scaledown_window=600,
     secrets=[modal.Secret.from_dotenv()],
 )
 @modal.concurrent(max_inputs=10)

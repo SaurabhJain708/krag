@@ -73,12 +73,19 @@ KRAG is a production-ready, serverless Retrieval-Augmented Generation (RAG) plat
    cd krag
    ```
 
-2. **Copy environment file and add Modal keys:**
+2. **Copy environment file and add required variables:**
 
    ```bash
    cp .env.example .env
-   # Edit .env and add your MODAL_TOKEN_ID and MODAL_TOKEN_SECRET
    ```
+
+   Edit `.env` and set all required variables. The app uses **cloud Supabase** for the database (no database runs in Docker). You must add at least:
+   - **Supabase (cloud)**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - **Modal**: `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`
+   - **Auth & app**: `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_API_URL`
+   - **Optional**: `EXA_API_KEY` (for web URL ingestion)
+
+   Keep `REDIS_URL` and `RETRIEVAL_API` as in `.env.example` when using Docker (they use Docker service names).
 
 3. **Start Docker services:**
 
@@ -109,12 +116,15 @@ Access the application at `http://localhost:3001`
 
 ### Environment Variables
 
-The `.env.example` file contains all required environment variables. After copying it to `.env`, you only need to add your Modal credentials:
+Copy `.env.example` to `.env`, then set the required values. The project uses **cloud Supabase** for the database (no PostgreSQL in Docker). Variables you must configure:
 
-- `MODAL_TOKEN_ID` - Your Modal token ID
-- `MODAL_TOKEN_SECRET` - Your Modal token secret
+- **Database (Supabase)**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- **Modal**: `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`
+- **Auth**: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
+- **App**: `NEXT_PUBLIC_API_URL`, `ENCRYPTION_KEY`, `ENCRYPTION_KEY_STORAGE`
+- **Optional**: `EXA_API_KEY` for web URL ingestion
 
-All other variables are pre-configured for local development.
+When running with Docker Compose, keep `REDIS_URL=redis://redis:6379` and `RETRIEVAL_API=http://retrieval-worker:8002/chat` as in `.env.example`.
 
 ---
 
@@ -225,11 +235,11 @@ krag/
 - FastAPI for retrieval worker
 - Modal for serverless functions
 - Redis for task queues
-- PostgreSQL (Supabase) for data storage
+- PostgreSQL via cloud Supabase for data storage (no database in Docker)
 
 **Infrastructure:**
 
-- Docker & Docker Compose for local development
+- Docker & Docker Compose for app and workers (Redis, web, ingestion-worker, retrieval-worker)
 - Turborepo for monorepo management
 - Prisma for database ORM
 - UV for Python package management
@@ -324,20 +334,16 @@ docker compose down
 
 ### Services
 
+Docker Compose runs only the app and workers. The **database is not in Docker**—use **cloud Supabase** and set `DATABASE_URL` and related env vars in `.env`.
+
 - **Web App**: Next.js application (port 3001)
 - **Ingestion Worker**: 3 replicas for document processing
 - **Retrieval Worker**: FastAPI service for RAG queries
-- **PostgreSQL**: Supabase database
 - **Redis**: Task queue and caching
 
 ### Environment-Specific Configuration
 
-Update environment variables in `docker-compose.yml` or use `.env` file for:
-
-- Production database URLs
-- API keys and secrets
-- Service endpoints
-- Encryption keys
+Copy `.env.example` to `.env` and set all required variables (see [Environment Variables](#environment-variables)). Include your cloud Supabase credentials and Modal tokens; Docker does not run a database.
 
 ### Modal Deployment
 
