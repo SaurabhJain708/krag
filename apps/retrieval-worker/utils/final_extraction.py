@@ -53,7 +53,7 @@ NOTE: The "citations" array is REQUIRED and must contain citations for all relev
 1. Citations are MANDATORY. You MUST include citations in every response unless the context is completely empty.
 2. Cite as many sources as possible. Every relevant source that contributes to your answer MUST be cited.
 3. Use `[CITATION: 1]` format in text. NEVER combine: `[CITATION: 1, 2]` is WRONG; `[CITATION: 1] [CITATION: 2]` is CORRECT.
-4. Extract chunkId from markers like `<<<block_123>>>` → use `block_123`.
+4. Extract chunkId from markers like `<<<123>>>` → use `123`.
 5. Cite ALL factual statements, numbers, definitions, claims, and any information derived from the context.
 6. When multiple sources support the same point, cite ALL of them. Do not limit citations - be comprehensive.
 
@@ -97,7 +97,7 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
                 json_schema_extra={"enum": source_ids},
             ),
         ),
-        chunkId=(str, Field(..., description=citation_fields["chunkId"].description)),
+        chunkId=(int, Field(..., description=citation_fields["chunkId"].description)),
         brief_summary=(
             str,
             Field(..., description=citation_fields["brief_summary"].description),
