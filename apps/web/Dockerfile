@@ -19,11 +19,11 @@ RUN npm ci
 ARG NEXT_PUBLIC_API_URL
 ARG NODE_ENV=production
 ARG ENCRYPTION_KEY_STORAGE
-ARG DATABASE_URL
-ARG BETTER_AUTH_SECRET
-ARG SUPABASE_URL
-ARG SUPABASE_SERVICE_ROLE_KEY
-ARG REDIS_URL
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ARG BETTER_AUTH_SECRET=placeholder-secret-for-build-only
+ARG SUPABASE_URL=https://placeholder.supabase.co
+ARG SUPABASE_SERVICE_ROLE_KEY=placeholder-key-for-build-only
+ARG REDIS_URL=redis://placeholder:6379
 
 # Set environment variables for build stage
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
@@ -43,9 +43,9 @@ RUN cd packages/database && npx prisma@5.17.0 generate --generator client || ech
 RUN cd packages/ui && mkdir -p dist && npm run build:styles && npm run build:components
 
 # Build the Next.js app
-
+# Skip dotenv-cli since we're setting env vars directly in Docker
 WORKDIR /app/apps/web
-RUN npm run build
+RUN npx next build
 
 # Stage 2: Runner - Production image
 # Using Debian-based image for better Prisma compatibility

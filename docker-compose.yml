@@ -1,47 +1,23 @@
-version: '3.8'
-
 x-common-env: &common-env
   # Use container service name for Docker, .env file uses localhost for host commands
-  DATABASE_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
-  DIRECT_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+  DATABASE_URL: ${DATABASE_URL}
+  DIRECT_URL: ${DIRECT_URL}
+  SUPABASE_URL: ${SUPABASE_URL}
+  SUPABASE_KEY: ${SUPABASE_KEY}
+  SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+  NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
   REDIS_URL: ${REDIS_URL}
   MODAL_TOKEN_ID: ${MODAL_TOKEN_ID}
   MODAL_TOKEN_SECRET: ${MODAL_TOKEN_SECRET}
   EXA_API_KEY: ${EXA_API_KEY}
+  NODE_ENV: ${NODE_ENV}
+  RETRIEVAL_API: ${RETRIEVAL_API}
   ENCRYPTION_KEY: ${ENCRYPTION_KEY}
   ENCRYPTION_KEY_STORAGE: ${ENCRYPTION_KEY_STORAGE}
-  SUPABASE_URL: ${SUPABASE_URL}
-  SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL}
 
 services:
-  # Supabase PostgreSQL (Local Development)
-  supabase-db:
-    image: supabase/postgres:15.1.0.117
-    container_name: krag-supabase-db
-    ports:
-      - "${SUPABASE_DB_PORT:-54322}:5432"
-    environment:
-      POSTGRES_HOST: /var/run/postgresql
-      PGPORT: 5432
-      POSTGRES_PORT: 5432
-      PGDATABASE: postgres
-      PGUSER: supabase_admin
-      POSTGRES_USER: supabase_admin
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXP: ${JWT_EXP}
-    volumes:
-      - supabase_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U supabase_admin"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - krag-network
-
   # Redis
   redis:
     image: redis:7-alpine
@@ -67,8 +43,6 @@ services:
     environment:
       <<: *common-env
     depends_on:
-      supabase-db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -85,10 +59,7 @@ services:
     container_name: krag-retrieval-worker
     environment:
       <<: *common-env
-      RETRIEVAL_API: ${RETRIEVAL_API}
     depends_on:
-      supabase-db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -106,22 +77,15 @@ services:
         ENCRYPTION_KEY_STORAGE: ${ENCRYPTION_KEY_STORAGE}
         DATABASE_URL: ${DATABASE_URL:-postgresql://placeholder:placeholder@localhost:5432/placeholder}
         BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-placeholder-secret-for-build-only}
-        SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
-        SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-placeholder-key}
         REDIS_URL: ${REDIS_URL:-redis://placeholder:6379}
+        SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
+        SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-placeholder-key-for-build-only}
     container_name: krag-web
     ports:
       - "${WEB_PORT:-3001}:3001"
     environment:
       <<: *common-env
-      NODE_ENV: ${NODE_ENV:-production}
-      SUPABASE_KEY: ${SUPABASE_KEY}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001/api/auth}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      RETRIEVAL_API: ${RETRIEVAL_API}
     depends_on:
-      supabase-db:
-        condition: service_healthy
       redis:
         condition: service_healthy
       retrieval-worker:
@@ -131,7 +95,6 @@ services:
       - krag-network
 
 volumes:
-  supabase_db_data:
   redis_data:
 
 networks:
