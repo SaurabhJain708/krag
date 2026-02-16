@@ -57,13 +57,17 @@ def replace_with_citation(text_with_citations: TextWithCitations) -> str:
 
 def clean_response(text: str) -> str:
     """
-    Remove backslashes and forward slashes that appear directly before span tags,
-    e.g. '\\<span', '/<span', '\\</span', or '/</span', without touching other
-    slashes or backslashes elsewhere.
+    Clean the final response text:
+    - Remove invalid/malformed citation markers (e.g. \\[CITATION: 1\"], \\[CITATION: 1])
+      that were not converted to valid <span data-citation="true">...</span> citations.
+    - Remove backslashes and forward slashes that appear directly before span tags.
     """
-    # Remove any combination of backslashes and forward slashes before opening span tags
+    # Remove malformed/leftover citation markers (optional backslashes + [CITATION: ... ])
+    text = re.sub(r"\\*\[CITATION:\s*\d+\s*[^\]]*\]", " ", text)
+    text = re.sub(r"  +", " ", text)
+    # Remove backslashes/forward slashes before opening span tags
     text = re.sub(r"[\\/]+(<span\b)", r"\1", text)
-    # Remove any combination of backslashes and forward slashes before closing span tags
+    # Remove backslashes/forward slashes before closing span tags
     text = re.sub(r"[\\/]+(</span>)", r"\1", text)
     return text
 
