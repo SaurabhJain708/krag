@@ -97,7 +97,7 @@ def create_text_with_citations_model(source_ids: list[str]) -> type[TextWithCita
                 json_schema_extra={"enum": source_ids},
             ),
         ),
-        chunkId=(int, Field(..., description=citation_fields["chunkId"].description)),
+        chunkId=(str, Field(..., description=citation_fields["chunkId"].description)),
         brief_summary=(
             str,
             Field(..., description=citation_fields["brief_summary"].description),
