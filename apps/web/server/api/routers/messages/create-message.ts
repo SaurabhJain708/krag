@@ -124,9 +124,8 @@ export const CreateMessage = protectedProcedure
           }
         }
       }
-    } catch {
-      // Ignore errors
-      console.error("Stream failed");
+    } catch (err) {
+      console.error("Stream failed", err);
     } finally {
       // Ensure we always clean up
       if (requestSignal && handleRequestAbort) {
