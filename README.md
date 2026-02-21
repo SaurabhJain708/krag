@@ -80,10 +80,10 @@ KRAG is a production-ready, serverless Retrieval-Augmented Generation (RAG) plat
    ```
 
    Edit `.env` and set all required variables. The app uses **cloud Supabase** for the database (no database runs in Docker). You must add at least:
-   - **Supabase (cloud)**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - **From `.env.example` (lines 2-6)**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - **Modal**: `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`
    - **Auth & app**: `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_API_URL`
-   - **Optional**: `EXA_API_KEY` (for web URL ingestion)
+   - **Exa**: `EXA_API_KEY` (required for web URL ingestion - get your API key from [Exa](https://exa.ai))
 
    Keep `REDIS_URL` and `RETRIEVAL_API` as in `.env.example` when using Docker (they use Docker service names).
 
@@ -118,11 +118,11 @@ Access the application at `http://localhost:3001`
 
 Copy `.env.example` to `.env`, then set the required values. The project uses **cloud Supabase** for the database (no PostgreSQL in Docker). Variables you must configure:
 
-- **Database (Supabase)**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- **From `.env.example` (lines 2-6)**: `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - **Modal**: `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`
 - **Auth**: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
 - **App**: `NEXT_PUBLIC_API_URL`, `ENCRYPTION_KEY`, `ENCRYPTION_KEY_STORAGE`
-- **Optional**: `EXA_API_KEY` for web URL ingestion
+- **Exa**: `EXA_API_KEY` (required for web URL ingestion - get your API key from [Exa](https://exa.ai))
 
 When running with Docker Compose, keep `REDIS_URL=redis://redis:6379` and `RETRIEVAL_API=http://retrieval-worker:8002/chat` as in `.env.example`.
 
