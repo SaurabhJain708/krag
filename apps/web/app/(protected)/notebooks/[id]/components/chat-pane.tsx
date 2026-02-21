@@ -168,7 +168,10 @@ export function ChatPane({
         setStatusHistory([]);
         setSubscriptionInput(null);
         // Rollback optimistic update
-        utils.messagesRouter.getMessages.invalidate({ notebookId });
+        utils.messagesRouter.getMessages.invalidate({
+          notebookId,
+          encryptionKey: encryptionKey,
+        });
       },
       onComplete: () => {
         toast.success("Message processed successfully", {
@@ -178,8 +181,11 @@ export function ChatPane({
         setCurrentStatus(null);
         setStatusHistory([]);
         setSubscriptionInput(null);
-        // Refresh messages to get the final result
-        utils.messagesRouter.getMessages.invalidate({ notebookId });
+        // Refresh messages to get the final result (happens asynchronously)
+        utils.messagesRouter.getMessages.invalidate({
+          notebookId,
+          encryptionKey: encryptionKey,
+        });
       },
     }
   );
@@ -207,10 +213,13 @@ export function ChatPane({
       failed: false,
     };
 
-    utils.messagesRouter.getMessages.setData({ notebookId }, (old) => [
-      ...(old ?? []),
-      optimisticUserMessage,
-    ]);
+    utils.messagesRouter.getMessages.setData(
+      { notebookId, encryptionKey: encryptionKey },
+      (old: typeof messages | undefined) => [
+        ...(old ?? []),
+        optimisticUserMessage,
+      ]
+    );
 
     // Start subscription by setting input
     setSubscriptionInput({
@@ -229,7 +238,10 @@ export function ChatPane({
     toast.dismiss("create-message");
     toast.info("Message cancelled");
     // Refresh messages to get the current state (removes optimistic update)
-    utils.messagesRouter.getMessages.invalidate({ notebookId });
+    utils.messagesRouter.getMessages.invalidate({
+      notebookId,
+      encryptionKey: encryptionKey,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

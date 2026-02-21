@@ -210,7 +210,7 @@ async def final_extraction(
     result = await remote_llm.generate.remote.aio(
         prompt=prompt,
         max_tokens=5000,
-        temperature=0.5,
+        temperature=0.7,
         json_schema=schema_str,
     )
 

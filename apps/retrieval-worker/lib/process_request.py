@@ -109,11 +109,15 @@ async def process_request(
     ) as e:
         # Client disconnected - handle connection errors
         print(f"Client connection was cut during processing: {e}", flush=True)
-        await save_to_db(assistant_message_id, None, failed=True)
+        await save_to_db(
+            assistant_message_id, None, encryption_type, encryption_key, failed=True
+        )
         raise ClientConnectionInterrupted(
             "Client connection was cut during processing"
         ) from e
     except Exception as e:
         print(f"Error processing request: {e}")
-        await save_to_db(assistant_message_id, None, failed=True)
+        await save_to_db(
+            assistant_message_id, None, encryption_type, encryption_key, failed=True
+        )
         raise
