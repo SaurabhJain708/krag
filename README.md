@@ -109,7 +109,7 @@ That's it! The setup script will:
 Once setup is complete, start the development servers:
 
 ```bash
-npm run dev
+npx turbo dev
 ```
 
 Access the application at `http://localhost:3001`
