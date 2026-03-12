@@ -2,7 +2,14 @@
 
 from .chunk_filter import SelectedChunkIds
 from .chunks import BaseChunk, ParentChunk
-from .citations import Citation, TextWithCitations
+from .citations import (
+    Citation,
+    FinalisedCitations,
+    FinalisedCitationsList,
+    HowItAnswersEntry,
+    HowItAnswersList,
+    TextWithCitations,
+)
 from .context import Context
 from .filtered_chunks import FilteredParentChunk, FilteredQueryResult
 from .messages import MessageData
@@ -18,6 +25,10 @@ __all__ = [
     "ParentChunk",
     "Citation",
     "TextWithCitations",
+    "HowItAnswersEntry",
+    "HowItAnswersList",
+    "FinalisedCitations",
+    "FinalisedCitationsList",
     "Context",
     "FilteredParentChunk",
     "FilteredQueryResult",

@@ -78,7 +78,7 @@ def build_query_optimizer_prompt(user_input: str, context_str: str) -> str:
 
 async def prepare_question(
     content: str, notebook_id: str, encryption_key: str | None
-) -> list[OptimizedQuery]:
+) -> tuple[list[OptimizedQuery], list[str]]:
     """
     Generate optimized search queries for a notebook, then enrich them with local metadata.
     """
@@ -128,4 +128,8 @@ async def prepare_question(
             )
         )
 
-    return optimized_queries[:5]
+    selected_queries = optimized_queries[:5]
+    # Also return the list of selected query texts as plain strings
+    selected_query_texts: list[str] = [q.optimized_query for q in selected_queries]
+
+    return selected_queries, selected_query_texts

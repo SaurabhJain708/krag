@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 
 class Citation(BaseModel):
@@ -67,3 +67,63 @@ class TextWithCitations(BaseModel):
         "markers in the text. Each citation provides the source text, source ID, "
         "chunk ID, and citation number for traceability.",
     )
+
+
+class HowItAnswersEntry(BaseModel):
+    """Represents how a specific source chunk helps answer the user query.
+
+    This model is used when the LLM returns per-source explanations in the format:
+    {
+        "how_it_answers": "...",
+        "sourceId": "...",
+        "chunkId": "..."
+    }
+    """
+
+    how_it_answers: str = Field(
+        ...,
+        description=(
+            "A concise explanation of how this specific source (and chunk) helps answer "
+            "the user query. This should directly reference the information in the "
+            "chunk and clearly state its contribution to the answer."
+        ),
+    )
+    sourceId: str = Field(
+        ...,
+        description="The 'id' attribute from the <source> tag where this chunk came from.",
+    )
+    chunkId: str = Field(
+        ...,
+        description=(
+            "The ID extracted from markers like `<<<123>>>` in the chunk content. "
+            "Always use the raw ID value (e.g., '123')."
+        ),
+    )
+
+
+class HowItAnswersList(RootModel[list[HowItAnswersEntry]]):
+    """Top-level array of `HowItAnswersEntry` objects returned by the LLM."""
+
+    root: list[HowItAnswersEntry]
+
+
+class FinalisedCitations(HowItAnswersEntry):
+    """Represents a post-processed citation entry with the real source text attached.
+
+    This is typically used after the LLM has produced `HowItAnswersEntry` objects and
+    the system has resolved them back to the underlying chunk content.
+    """
+
+    real_text: str | None = Field(
+        default=None,
+        description=(
+            "The actual text of the chunk or snippet that this entry refers to, after "
+            "resolving `sourceId` and `chunkId` back to the original document content."
+        ),
+    )
+
+
+class FinalisedCitationsList(RootModel[list[FinalisedCitations]]):
+    """Top-level array of `FinalisedCitations` objects used internally in the pipeline."""
+
+    root: list[FinalisedCitations]

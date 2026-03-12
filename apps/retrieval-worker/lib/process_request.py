@@ -1,8 +1,8 @@
 from utils.chunk_retriever import retrieve_chunks
+from utils.extract_citations import extract_citations
 from utils.filter_parent_chunks import filter_parent_chunks
-from utils.final_extraction import final_extraction
-from utils.finalise_response import finalise_response
 from utils.get_parent_chunks import get_parent_chunks
+from utils.prepare_answer import prepare_answer
 from utils.prepare_context import prepare_context
 from utils.prepare_question import prepare_question
 from utils.save_to_db import save_to_db
@@ -32,10 +32,12 @@ async def process_request(
         # 1. Prepare the question
         yield "preparing_question"
         print(f"Preparing question: {user_query}")
-        prepared_question = await prepare_question(
+        prepared_question, enhanced_queries = await prepare_question(
             user_query, notebook_id, encryption_key
         )
-        print(f"Prepared {prepared_question} optimized queries")
+        print(
+            f"Prepared {len(prepared_question)} optimized queries: {enhanced_queries}"
+        )
 
         # 2. Retrieve the chunks
         yield "retrieving_chunks"
@@ -58,12 +60,16 @@ async def process_request(
         # 5. Extract the content
         yield "extracting_content"
         print("Extracting content")
-        extracted_content = await final_extraction(filtered_parent_chunks, user_query)
-        print("Content extracted")
+        extracted_citations = await extract_citations(
+            filtered_parent_chunks, user_query
+        )
+        print(f"Extracted {len(extracted_citations)} citations")
 
         # 7. Generate the response
         yield "generating_response"
-        final_response = finalise_response(extracted_content)
+        final_response = await prepare_answer(
+            extracted_citations, user_query, enhanced_queries
+        )
         print(f"Final response generated ({final_response} chars)")
 
         print("Summarising messages")
