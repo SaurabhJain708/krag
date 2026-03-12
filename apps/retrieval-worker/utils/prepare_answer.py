@@ -59,6 +59,12 @@ def replace_with_citation(
 
         # Prefer real_text, fall back to how_it_answers
         summary_source = (citation.real_text or citation.how_it_answers or "").strip()
+        # Remove markdown syntax and square brackets from the summary so that
+        # the data-summary attribute only contains plain text.
+        # - Turn markdown links [text](url) into just "text"
+        summary_source = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", summary_source)
+        # - Strip remaining markdown control characters / brackets / list markers
+        summary_source = re.sub(r"[\[\]\*_`>#\-]", "", summary_source)
         summary_escaped = summary_source.replace('"', "&quot;").replace("'", "&apos;")
 
         def _replace(
