@@ -2,9 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { protectedProcedure } from "../../trpc";
 import { z } from "zod";
 import { FileProcessingStatus, FileType } from "@repo/db";
-import { uploadFile as uploadFileToStorage } from "@/lib/upload-file";
 import { redis } from "@/lib/redis";
-
+import { v4 as uuidv4 } from "uuid";
 export const uploadFile = protectedProcedure
   .input(
     z.object({
@@ -28,12 +27,6 @@ export const uploadFile = protectedProcedure
     if (!notebook) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Notebook not found" });
     }
-    const buffer = Buffer.from(fileBase64 || "", "base64");
-    const data = await uploadFileToStorage({
-      buffer,
-      mimeType: "application/pdf",
-      userId,
-    });
 
     const encryptionType = notebook.encryption;
 
@@ -48,8 +41,10 @@ export const uploadFile = protectedProcedure
     );
     console.log("Upload file - encryptionType:", encryptionType);
 
+    const id = uuidv4();
+
     const queueMessage = {
-      id: data.id,
+      id,
       mimeType: websiteUrl ? "text/html" : "application/pdf",
       base64: fileBase64 || "",
       user_id: userId,
@@ -71,16 +66,16 @@ export const uploadFile = protectedProcedure
 
     await redis.lpush("file_processing_queue", JSON.stringify(queueMessage));
 
-    await redis.set(`source:${data.id}`, FileProcessingStatus.queued);
+    await redis.set(`source:${id}`, FileProcessingStatus.queued);
 
     const source = await ctx.db.source.create({
       data: {
-        id: data.id,
+        id,
         userId,
         notebookId,
         name: websiteUrl ? websiteUrl : fileName || "",
         type: websiteUrl ? FileType.url : FileType.pdf,
-        path: data.path,
+        path: `${userId}/${id}`,
         processingStatus: FileProcessingStatus.queued,
       },
     });
