@@ -1,5 +1,8 @@
 # KRAG - Serverless RAG Agent
 
+> 🔍 **Architecture Diagram:** View the live system diagram in Excalidraw:  
+> [KRAG Architecture Diagram](https://excalidraw.com/#json=srWm6QNsi3Yg3xSv8EaxT,bUBDdSoy6FqXuIe1Wi0DQw)
+
 <div align="center">
 
 <div style="margin: 40px 0;">
@@ -176,6 +179,12 @@ When running with Docker Compose, keep `REDIS_URL=redis://redis:6379` and `RETRI
 ### Monorepo Structure
 
 KRAG uses a Turborepo monorepo with the following structure:
+
+### High-Level Architecture Diagram
+
+You can view and edit the system architecture diagram in Excalidraw:
+
+- [KRAG Architecture Diagram](https://excalidraw.com/#json=srWm6QNsi3Yg3xSv8EaxT,bUBDdSoy6FqXuIe1Wi0DQw)
 
 ```
 krag/
