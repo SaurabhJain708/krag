@@ -65,6 +65,8 @@ def replace_with_citation(
         summary_source = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", summary_source)
         # - Strip remaining markdown control characters / brackets / list markers
         summary_source = re.sub(r"[\[\]\*_`>#\-]", "", summary_source)
+        # - Remove any line breaks / excessive whitespace so the summary is a single line
+        summary_source = " ".join(summary_source.split())
         summary_escaped = summary_source.replace('"', "&quot;").replace("'", "&apos;")
 
         def _replace(
