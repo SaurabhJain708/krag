@@ -1,5 +1,7 @@
 # KRAG - Serverless RAG Agent
 
+[![Watch the KRAG demo video](https://img.youtube.com/vi/sngsQ6HJnlY/maxresdefault.jpg)](https://www.youtube.com/watch?v=sngsQ6HJnlY&t=2s)
+
 > 🔍 **Architecture Diagram:** View the live system diagram in Excalidraw:  
 > [KRAG Architecture Diagram](https://excalidraw.com/#json=srWm6QNsi3Yg3xSv8EaxT,bUBDdSoy6FqXuIe1Wi0DQw)
 
